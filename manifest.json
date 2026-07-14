@@ -1,0 +1,13 @@
+{
+  "name": "TOTORO Crossing",
+  "short_name": "Crossing",
+  "description": "14-day multi-source wind & wave consensus for Aegean crossings",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0a1628",
+  "theme_color": "#0a1628",
+  "icons": [
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

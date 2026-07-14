@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TOTORO Crossing — Wind & Wave Consensus</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Crossing">
+<meta name="theme-color" content="#0a1628">
+<style>
+  :root {
+    --bg: #0a1628;
+    --bg2: #0f1f38;
+    --card: #13284a;
+    --card2: #1a3157;
+    --line: #24406e;
+    --text: #dce7f5;
+    --dim: #8aa3c4;
+    --accent: #4da3ff;
+    --gold: #ffd166;
+    --green: #2ecc71;
+    --amber: #f5a623;
+    --red: #ff5c5c;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+    min-height: 100vh;
+    color: var(--text);
+    font-family: "Aptos Display", "Aptos", "Segoe UI", system-ui, sans-serif;
+    padding: 24px 16px 60px;
+  }
+  .wrap { max-width: 1060px; margin: 0 auto; }
+  h1 { font-size: 26px; font-weight: 700; letter-spacing: .3px; }
+  h1 .boat { color: var(--gold); }
+  .sub { color: var(--dim); font-size: 14px; margin-top: 4px; }
+
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px;
+    margin-top: 18px;
+  }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  label { color: var(--dim); font-size: 13px; }
+  input[type="text"] {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 15px;
+    font-family: inherit;
+    width: 230px;
+  }
+  input[type="number"] {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 6px 8px;
+    font-size: 13px;
+    font-family: inherit;
+    width: 64px;
+  }
+  input:focus { outline: 1px solid var(--accent); }
+  button {
+    background: var(--accent);
+    color: #06182e;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 15px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  button:hover { filter: brightness(1.1); }
+  .chip {
+    background: var(--card2);
+    color: var(--text);
+    border: 1px solid var(--line);
+    font-weight: 400;
+    font-size: 13px;
+    padding: 6px 12px;
+  }
+  .chip:hover { border-color: var(--accent); }
+  .thresholds { margin-left: auto; display: flex; gap: 14px; align-items: center; font-size: 13px; color: var(--dim); }
+
+  #status { margin-top: 14px; color: var(--dim); font-size: 14px; }
+  #status.error { color: var(--red); }
+
+  .summary { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 4px; }
+  .stat {
+    background: var(--card2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 16px;
+    min-width: 130px;
+  }
+  .stat .k { font-size: 12px; color: var(--dim); }
+  .stat .v { font-size: 19px; font-weight: 700; margin-top: 2px; }
+
+  h2 { font-size: 16px; font-weight: 700; color: var(--accent); margin-bottom: 10px; }
+  .legend { font-size: 12px; color: var(--dim); margin-bottom: 6px; }
+  .legend .sw { display: inline-block; width: 22px; height: 8px; border-radius: 3px; vertical-align: middle; margin: 0 4px 0 12px; }
+  svg { width: 100%; height: auto; display: block; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { padding: 7px 8px; text-align: center; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--dim); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .4px; }
+  td.day { text-align: left; font-weight: 600; }
+  td .band { color: var(--dim); font-size: 11.5px; }
+  .verdict { display: inline-block; padding: 3px 12px; border-radius: 20px; font-weight: 700; font-size: 12px; }
+  .v-go { background: rgba(46,204,113,.15); color: var(--green); border: 1px solid rgba(46,204,113,.4); }
+  .v-care { background: rgba(245,166,35,.15); color: var(--amber); border: 1px solid rgba(245,166,35,.4); }
+  .v-no { background: rgba(255,92,92,.15); color: var(--red); border: 1px solid rgba(255,92,92,.4); }
+  tr.rowdim td { opacity: .55; }
+
+  .foot { margin-top: 16px; color: var(--dim); font-size: 12.5px; line-height: 1.7; }
+  .foot a { color: var(--accent); text-decoration: none; }
+  .foot a:hover { text-decoration: underline; }
+  .hide { display: none; }
+  .tablewrap { overflow-x: auto; }
+
+  /* Mapbox picker modal */
+  .modal {
+    position: fixed; inset: 0; z-index: 60;
+    background: rgba(3, 9, 18, .78);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal-box {
+    width: min(940px, 95vw); height: min(640px, 90vh);
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .modal-head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-bottom: 1px solid var(--line);
+  }
+  .modal-head h3 { font-size: 15px; color: var(--accent); font-weight: 700; flex: 1; }
+  .modal-head .coords { font-size: 14px; color: var(--gold); min-width: 150px; text-align: right; }
+  .modal-head button { padding: 7px 16px; font-size: 13.5px; }
+  .modal-head .x { background: var(--card2); color: var(--dim); border: 1px solid var(--line); }
+  #pickMap { flex: 1; background: var(--bg); }
+  #pickMap .leaflet-container { font-family: inherit; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><span class="boat">⛵</span> TOTORO Crossing</h1>
+  <div class="sub">14-day multi-source consensus for wind speed &amp; wave height — <span style="color:#4da3ff">Open-Meteo</span> (ECMWF · GFS · ICON · UKMO / WAM · GWAM · EWAM · MFWAM · GFSwave) + <span style="color:#ffa94d">Windy</span> (GFS · ICON-EU / GFSwave · ICON-EU-wave) + <span style="color:#33e0d0">Poseidon HCMR</span> (Aegean METEO / WAM, days 1–5)</div>
+
+  <div class="panel">
+    <div class="row">
+      <label for="coords">Point of interest</label>
+      <input type="text" id="coords" placeholder="lat, lon  e.g. 36.65, 26.35" value="">
+      <button id="go">Get consensus</button>
+      <button id="mapBtn" style="background:var(--card2);color:var(--accent);border:1px solid var(--accent)">Mapbox 🗺</button>
+      <span id="presets"></span>
+      <span class="thresholds">
+        Verdict limits:
+        wind ≤ <input type="number" id="thWindGo" value="15" step="1" min="1"> / <input type="number" id="thWindNo" value="20" step="1" min="1"> kt
+        &nbsp;·&nbsp; wave ≤ <input type="number" id="thWaveGo" value="1.0" step="0.1" min="0.1"> / <input type="number" id="thWaveNo" value="1.5" step="0.1" min="0.1"> m
+      </span>
+    </div>
+    <div id="status">Enter coordinates (decimal degrees) and press Get consensus.</div>
+  </div>
+
+  <div id="report" class="hide">
+    <div class="panel">
+      <h2 id="locTitle"></h2>
+      <div class="summary" id="summary"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Wind speed — by source (knots)</h2>
+      <div class="legend">
+        <span class="sw" style="background:#4da3ff"></span>Open-Meteo
+        <span class="sw" style="background:#ffa94d"></span>Windy
+        <span class="sw" style="background:#33e0d0"></span>Poseidon
+        <span class="sw" style="background:rgba(140,165,200,.35)"></span>all-model min–max
+        <span class="sw" style="background:#8aa3c4;height:3px"></span>gusts
+        <span class="sw" style="background:rgba(255,92,92,.35)"></span>⚠ sources diverge ≥ 6 kt
+      </div>
+      <div id="windChart"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Wave height — by source (meters)</h2>
+      <div class="legend">
+        <span class="sw" style="background:#4da3ff"></span>Open-Meteo
+        <span class="sw" style="background:#ffa94d"></span>Windy
+        <span class="sw" style="background:#33e0d0"></span>Poseidon
+        <span class="sw" style="background:rgba(140,165,200,.35)"></span>all-model min–max
+        <span class="sw" style="background:rgba(255,92,92,.35)"></span>⚠ sources diverge ≥ 0.5 m
+      </div>
+      <div id="waveChart"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Daily crossing report</h2>
+      <div class="tablewrap">
+      <table id="daily">
+        <thead>
+          <tr>
+            <th>Day</th>
+            <th>Wind avg kt</th>
+            <th>Wind max kt</th>
+            <th>Gust max kt</th>
+            <th>Wind dir</th>
+            <th>Wave avg m</th>
+            <th>Wave max m</th>
+            <th>Period s</th>
+            <th>Models W/S</th>
+            <th>Agreement</th>
+            <th>Verdict</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <div class="foot" id="crosscheck"></div>
+      <div class="foot">
+        Each colored line is one source's own median (Open-Meteo = 4–5 models, Windy = 2 models, Poseidon = 1 high-res Aegean model, days 1–5 only). Red stripes + ⚠ mark hours where the sources themselves disagree by ≥ 6 kt wind or ≥ 0.5 m wave — the days to re-check before committing. Grey band = min–max across all models; table numbers = all-model consensus (median). Model horizons differ (3–16 d) so late days rest on fewer models. Agreement = band width vs median (tight ≤ 25 %, fair ≤ 50 %, poor beyond). Beyond day 7 treat everything as tendency, not forecast.
+        Data: <a href="https://open-meteo.com/" target="_blank">Open-Meteo</a> (free, non-commercial) + <a href="https://api.windy.com/" target="_blank">Windy Point Forecast API</a> (personal key embedded in this file; quota-limited) + <a href="https://poseidon.hcmr.gr/" target="_blank">Poseidon HCMR</a> (via public CORS relay, so it can occasionally be slow or unavailable — the page then continues without it; wave grid masked very close to shore). All times local to the point.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="mapModal" class="modal hide">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>Pick a point — click the map (drag the marker to fine-tune)</h3>
+      <span class="coords" id="pickCoords">—</span>
+      <button id="pickUse" disabled>Use this point</button>
+      <button id="pickClose" class="x">✕</button>
+    </div>
+    <div id="pickMap"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+const PRESETS = [
+  { name: "Gökova",      lat: 37.03, lon: 27.40 },
+  { name: "Open Aegean", lat: 36.50, lon: 26.50 },
+  { name: "Datça–Kos",   lat: 36.75, lon: 27.15 },
+];
+const WIND_MODELS = [
+  { id: "ecmwf_ifs025",  name: "ECMWF" },
+  { id: "gfs_seamless",  name: "GFS" },
+  { id: "icon_seamless", name: "ICON" },
+  { id: "ukmo_seamless", name: "UKMO" },
+];
+const WAVE_MODELS = [
+  { id: "ecmwf_wam025",     name: "ECMWF-WAM" },
+  { id: "gwam",             name: "DWD-GWAM" },
+  { id: "ewam",             name: "DWD-EWAM" },
+  { id: "meteofrance_wave", name: "MFWAM" },
+  { id: "ncep_gfswave025",  name: "GFSwave" },
+];
+const DAYS = 14;
+
+const WINDY_KEY = "Y0U61mqQyXwnLUvsgZqigHZkJV7ArhpA";
+const WINDY_WIND_MODELS = [
+  { id: "gfs",    name: "Windy-GFS" },
+  { id: "iconEu", name: "Windy-ICON-EU" },
+];
+const WINDY_WAVE_MODELS = [
+  { id: "gfsWave",    name: "Windy-GFSwave" },
+  { id: "iconEuWave", name: "Windy-ICON-EU-wave" },
+];
+const MS2KN = 1.94384;
+
+/* Source identity colors (same on both charts) */
+const SRC = {
+  om:       { name: "Open-Meteo", color: "#4da3ff" },
+  windy:    { name: "Windy",      color: "#ffa94d" },
+  poseidon: { name: "Poseidon",   color: "#33e0d0" },
+};
+/* Major-discrepancy thresholds between source medians */
+const DISC_WIND_KT = 6;
+const DISC_WAVE_M  = 0.5;
+const DISC_HOURS_FLAG = 3; // hours of conflict before a day gets flagged
+
+/* Poseidon reached via public CORS relays (its API blocks other origins directly) */
+const CORS_PROXIES = [
+  u => "https://proxy.cors.sh/" + u,
+  u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
+  u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+];
+
+const $ = id => document.getElementById(id);
+
+/* ---------- helpers ---------- */
+
+function parseCoords(str) {
+  const m = String(str).trim().match(/^(-?\d+(?:\.\d+)?)\s*[,;\s]\s*(-?\d+(?:\.\d+)?)$/);
+  if (!m) return null;
+  const lat = parseFloat(m[1]), lon = parseFloat(m[2]);
+  if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+  return { lat, lon };
+}
+
+function median(arr) {
+  const a = arr.filter(v => v != null && isFinite(v)).sort((x, y) => x - y);
+  if (!a.length) return null;
+  const mid = a.length >> 1;
+  return a.length % 2 ? a[mid] : (a[mid - 1] + a[mid]) / 2;
+}
+const minOf = arr => { const a = arr.filter(v => v != null && isFinite(v)); return a.length ? Math.min(...a) : null; };
+const maxOf = arr => { const a = arr.filter(v => v != null && isFinite(v)); return a.length ? Math.max(...a) : null; };
+const meanOf = arr => { const a = arr.filter(v => v != null && isFinite(v)); return a.length ? a.reduce((s, v) => s + v, 0) / a.length : null; };
+
+function circularMean(degs) {
+  const a = degs.filter(v => v != null && isFinite(v));
+  if (!a.length) return null;
+  let sx = 0, sy = 0;
+  for (const d of a) { sx += Math.cos(d * Math.PI / 180); sy += Math.sin(d * Math.PI / 180); }
+  return (Math.atan2(sy, sx) * 180 / Math.PI + 360) % 360;
+}
+function dirLabel(deg) {
+  if (deg == null) return "—";
+  const pts = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+  return pts[Math.round(deg / 22.5) % 16] + " " + Math.round(deg) + "°";
+}
+const fmt = (v, dp = 1) => v == null ? "—" : v.toFixed(dp).replace(/\.0$/, dp === 1 ? "" : ".0");
+
+/* Per-hour consensus rows from a multi-model hourly block */
+function consensus(hourly, varName, models) {
+  const n = hourly.time.length;
+  const rows = [];
+  for (let i = 0; i < n; i++) {
+    const vals = [];
+    for (const m of models) {
+      const arr = hourly[varName + "_" + m.id];
+      const v = arr ? arr[i] : null;
+      if (v != null && isFinite(v)) vals.push(v);
+    }
+    rows.push({ med: median(vals), lo: minOf(vals), hi: maxOf(vals), n: vals.length });
+  }
+  return rows;
+}
+
+/* Linear interpolation of a Windy 3-hourly series onto epoch-ms targets */
+function interpSeries(ts, vals, epochs) {
+  const out = new Array(epochs.length).fill(null);
+  if (!ts || !vals || ts.length < 2) return out;
+  let j = 0;
+  for (let i = 0; i < epochs.length; i++) {
+    const e = epochs[i];
+    if (e < ts[0] || e > ts[ts.length - 1]) continue;
+    while (j < ts.length - 2 && ts[j + 1] < e) j++;
+    while (j > 0 && ts[j] > e) j--;
+    const v0 = vals[j], v1 = vals[j + 1];
+    if (v0 == null || v1 == null) continue;
+    const f = ts[j + 1] === ts[j] ? 0 : (e - ts[j]) / (ts[j + 1] - ts[j]);
+    out[i] = v0 + (v1 - v0) * f;
+  }
+  return out;
+}
+
+/* ---------- fetching ---------- */
+
+async function fetchWindy(lat, lon, model, parameters) {
+  const r = await fetch("https://api.windy.com/api/point-forecast/v2", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ lat, lon, model, parameters, levels: ["surface"], key: WINDY_KEY }),
+  });
+  if (!r.ok) {
+    let msg = "HTTP " + r.status;
+    try { msg += " " + ((await r.json()).message || ""); } catch (e) {}
+    throw new Error(msg);
+  }
+  return r.json();
+}
+
+async function fetchPoseidon(model, lat, lon) {
+  const url = `https://nodejs.hcmr.gr/forB/${model}/${lat.toFixed(4)}/${lon.toFixed(4)}`;
+  let lastErr = new Error("no relay");
+  for (const wrap of CORS_PROXIES) {
+    try {
+      const r = await fetch(wrap(url), { signal: AbortSignal.timeout(12000) });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const j = await r.json();
+      if (!Array.isArray(j) || !j.length) throw new Error("empty response");
+      return j;
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr;
+}
+
+/* Poseidon forB rows -> {ts[], col(i)} with -999 masked to null */
+function poseidonCols(rows) {
+  const ts = rows.map(r => Date.parse(r.date));
+  const cells = rows.map(r => (r.data != null) ? r.data.split(",").map(parseFloat) : null);
+  const col = i => cells.map(c => (c && isFinite(c[i]) && c[i] > -900) ? c[i] : null);
+  return { ts, col };
+}
+
+async function fetchAll(lat, lon) {
+  const windURL = "https://api.open-meteo.com/v1/forecast"
+    + `?latitude=${lat}&longitude=${lon}`
+    + "&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m"
+    + `&forecast_days=${DAYS}&wind_speed_unit=kn&timezone=auto`
+    + "&models=" + WIND_MODELS.map(m => m.id).join(",");
+  const waveURL = "https://marine-api.open-meteo.com/v1/marine"
+    + `?latitude=${lat}&longitude=${lon}`
+    + "&hourly=wave_height,wave_period,wave_direction"
+    + `&forecast_days=${DAYS}&timezone=auto`
+    + "&models=" + WAVE_MODELS.map(m => m.id).join(",");
+
+  const settled = await Promise.allSettled([
+    fetch(windURL).then(r => { if (!r.ok) throw new Error("wind HTTP " + r.status); return r.json(); }),
+    fetch(waveURL).then(r => { if (!r.ok) throw new Error("wave HTTP " + r.status); return r.json(); }),
+    fetchPoseidon("METEO", lat, lon),
+    fetchPoseidon("WAM", lat, lon),
+    ...WINDY_WIND_MODELS.map(m => fetchWindy(lat, lon, m.id, ["wind", "windGust"])),
+    ...WINDY_WAVE_MODELS.map(m => fetchWindy(lat, lon, m.id, ["waves"])),
+  ]);
+  const [windRes, waveRes, posWindRes, posWaveRes, ...windyRes] = settled;
+  if (windRes.status === "rejected") throw new Error("Wind fetch failed: " + windRes.reason.message);
+
+  const windyWind = [], windyWave = [], windyErrors = [];
+  WINDY_WIND_MODELS.forEach((m, i) => {
+    const r = windyRes[i];
+    r.status === "fulfilled" ? windyWind.push({ model: m, data: r.value })
+      : windyErrors.push(m.name + ": " + r.reason.message);
+  });
+  WINDY_WAVE_MODELS.forEach((m, i) => {
+    const r = windyRes[WINDY_WIND_MODELS.length + i];
+    r.status === "fulfilled" ? windyWave.push({ model: m, data: r.value })
+      : windyErrors.push(m.name + ": " + r.reason.message);
+  });
+  const poseidonErrors = [];
+  if (posWindRes.status === "rejected") poseidonErrors.push("METEO: " + posWindRes.reason.message);
+  if (posWaveRes.status === "rejected") poseidonErrors.push("WAM: " + posWaveRes.reason.message);
+  return {
+    wind: windRes.value,
+    wave: waveRes.status === "fulfilled" ? waveRes.value : null,
+    windyWind, windyWave, windyErrors,
+    poseidonWind: posWindRes.status === "fulfilled" ? posWindRes.value : null,
+    poseidonWave: posWaveRes.status === "fulfilled" ? posWaveRes.value : null,
+    poseidonErrors,
+  };
+}
+
+/* ---------- charts (pure SVG) ---------- */
+
+function chart(rows, times, opts) {
+  const W = 1020, H = 260, padL = 44, padR = 10, padT = 12, padB = 30;
+  const iw = W - padL - padR, ih = H - padT - padB;
+  const n = rows.length;
+  const seriesMax = (opts.series || []).flatMap(s => s.vals).filter(v => v != null);
+  const yMaxData = Math.max(opts.minYMax, ...rows.map(r => r.hi ?? 0), ...(seriesMax.length ? seriesMax : [0]));
+  const yMax = Math.ceil(yMaxData * 1.15 / opts.yStep) * opts.yStep;
+  const x = i => padL + iw * i / (n - 1);
+  const y = v => padT + ih * (1 - v / yMax);
+
+  let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+
+  // y grid
+  for (let v = 0; v <= yMax; v += opts.yStep) {
+    s += `<line x1="${padL}" y1="${y(v)}" x2="${W - padR}" y2="${y(v)}" stroke="#24406e" stroke-width="0.6"/>`;
+    s += `<text x="${padL - 7}" y="${y(v) + 4}" fill="#8aa3c4" font-size="11" text-anchor="end">${v}</text>`;
+  }
+  // day boundaries + labels
+  const dayFmt = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric" });
+  for (let i = 0; i < n; i++) {
+    const d = new Date(times[i]);
+    if (d.getHours() === 0) {
+      s += `<line x1="${x(i)}" y1="${padT}" x2="${x(i)}" y2="${padT + ih}" stroke="#24406e" stroke-width="0.8"/>`;
+      const parts = dayFmt.format(d).split(" ");
+      s += `<text x="${x(i) + 3}" y="${H - 16}" fill="#8aa3c4" font-size="10.5">${parts[0]}</text>`;
+      s += `<text x="${x(i) + 3}" y="${H - 5}" fill="#8aa3c4" font-size="10.5">${parts[1]}</text>`;
+    }
+  }
+  // major-discrepancy stripes (behind everything else)
+  if (opts.stripes) {
+    let a = -1;
+    const flushStripe = i => {
+      if (a >= 0) s += `<rect x="${x(Math.max(0, a - 0.5)).toFixed(1)}" y="${padT}" width="${(x(Math.min(n - 1, i - 0.5)) - x(Math.max(0, a - 0.5))).toFixed(1)}" height="${ih}" fill="rgba(255,92,92,.13)"/>`;
+      a = -1;
+    };
+    for (let i = 0; i < n; i++) { if (opts.stripes[i]) { if (a < 0) a = i; } else flushStripe(i); }
+    flushStripe(n);
+  }
+  // threshold lines
+  for (const t of opts.thresholds) {
+    if (t.v < yMax) s += `<line x1="${padL}" y1="${y(t.v)}" x2="${W - padR}" y2="${y(t.v)}" stroke="${t.color}" stroke-width="1.1" stroke-dasharray="6 4" opacity="0.8"/>`;
+  }
+  // band polygon (split on gaps)
+  let seg = [];
+  const flushBand = () => {
+    if (seg.length > 1) {
+      const top = seg.map(p => `${x(p.i).toFixed(1)},${y(p.hi).toFixed(1)}`).join(" ");
+      const bot = seg.slice().reverse().map(p => `${x(p.i).toFixed(1)},${y(p.lo).toFixed(1)}`).join(" ");
+      s += `<polygon points="${top} ${bot}" fill="${opts.bandColor}"/>`;
+    }
+    seg = [];
+  };
+  rows.forEach((r, i) => { (r.lo != null && r.hi != null) ? seg.push({ i, lo: r.lo, hi: r.hi }) : flushBand(); });
+  flushBand();
+
+  // per-source lines
+  const path = (vals, color, width, dash) => {
+    let d = "", pen = false;
+    for (let i = 0; i < n; i++) {
+      const v = vals[i];
+      if (v == null) { pen = false; continue; }
+      d += (pen ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1) + " ";
+      pen = true;
+    }
+    if (d) s += `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}"${dash ? ` stroke-dasharray="${dash}"` : ""}/>`;
+  };
+  for (const ser of (opts.series || [])) path(ser.vals, ser.color, ser.width || 2, ser.dash);
+
+  s += "</svg>";
+  return s;
+}
+
+/* ---------- daily aggregation & report ---------- */
+
+function dayKey(t) { return t.slice(0, 10); }
+
+function buildDaily(times, windC, gustC, dirRows, waveC, perRows, waveDirRows) {
+  const map = new Map();
+  times.forEach((t, i) => {
+    const k = dayKey(t);
+    if (!map.has(k)) map.set(k, []);
+    map.get(k).push(i);
+  });
+  const days = [];
+  for (const [k, idx] of map) {
+    const wMed = idx.map(i => windC[i].med), wHi = idx.map(i => windC[i].hi), wLo = idx.map(i => windC[i].lo);
+    const vMed = waveC ? idx.map(i => waveC[i].med) : [], vHi = waveC ? idx.map(i => waveC[i].hi) : [], vLo = waveC ? idx.map(i => waveC[i].lo) : [];
+    const spreadW = meanOf(idx.map(i => (windC[i].hi != null && windC[i].med > 2) ? (windC[i].hi - windC[i].lo) / windC[i].med : null));
+    const spreadV = waveC ? meanOf(idx.map(i => (waveC[i].hi != null && waveC[i].med > 0.2) ? (waveC[i].hi - waveC[i].lo) / waveC[i].med : null)) : null;
+    const spreads = [spreadW, spreadV].filter(v => v != null);
+    days.push({
+      key: k,
+      date: new Date(k + "T12:00:00"),
+      windAvg: meanOf(wMed), windMax: maxOf(wMed), windMaxHi: maxOf(wHi), windMaxLo: maxOf(wLo),
+      gustMax: maxOf(idx.map(i => gustC[i].med)),
+      dir: circularMean(idx.map(i => dirRows[i])),
+      waveAvg: meanOf(vMed), waveMax: maxOf(vMed), waveMaxHi: maxOf(vHi), waveMaxLo: maxOf(vLo),
+      period: meanOf(perRows ? idx.map(i => perRows[i]) : []),
+      nWind: Math.round(meanOf(idx.map(i => windC[i].n)) ?? 0),
+      nWave: waveC ? Math.round(meanOf(idx.map(i => waveC[i].n)) ?? 0) : 0,
+      spread: spreads.length ? meanOf(spreads) : null,
+    });
+  }
+  return days.slice(0, DAYS);
+}
+
+function verdict(day, th) {
+  if (day.windMax == null) return null;
+  const w = day.windMax, v = day.waveMax;
+  if (w <= th.windGo && (v == null || v <= th.waveGo)) return "go";
+  if (w <= th.windNo && (v == null || v <= th.waveNo)) return "care";
+  return "no";
+}
+
+function agreementLabel(s) {
+  if (s == null) return ["—", "var(--dim)"];
+  if (s <= 0.25) return ["tight", "var(--green)"];
+  if (s <= 0.50) return ["fair", "var(--amber)"];
+  return ["poor", "var(--red)"];
+}
+
+function render(lat, lon, data) {
+  const th = {
+    windGo: parseFloat($("thWindGo").value) || 15,
+    windNo: parseFloat($("thWindNo").value) || 20,
+    waveGo: parseFloat($("thWaveGo").value) || 1.0,
+    waveNo: parseFloat($("thWaveNo").value) || 1.5,
+  };
+  const wh = data.wind.hourly;
+  const times = wh.time;
+  const offsetMs = (data.wind.utc_offset_seconds || 0) * 1000;
+  const epochs = times.map(t => Date.parse(t + "Z") - offsetMs); // hourly local times -> epoch ms UTC
+
+  // graft Windy members onto the Open-Meteo hourly grid
+  const windModelsAll = [...WIND_MODELS];
+  for (const { model, data: d } of (data.windyWind || [])) {
+    const u = interpSeries(d.ts, d["wind_u-surface"], epochs);
+    const v = interpSeries(d.ts, d["wind_v-surface"], epochs);
+    const g = interpSeries(d.ts, d["gust-surface"], epochs);
+    wh["wind_speed_10m_" + model.id] = u.map((uu, i) => (uu == null || v[i] == null) ? null : Math.hypot(uu, v[i]) * MS2KN);
+    wh["wind_gusts_10m_" + model.id] = g.map(x => x == null ? null : x * MS2KN);
+    wh["wind_direction_10m_" + model.id] = u.map((uu, i) => (uu == null || v[i] == null) ? null : (Math.atan2(-uu, -v[i]) * 180 / Math.PI + 360) % 360);
+    windModelsAll.push(model);
+  }
+
+  // graft Poseidon (Aegean high-res, days 1-5) onto the same grid
+  const windyWindModels = (data.windyWind || []).map(w => w.model);
+  const windyWaveModels = (data.windyWave || []).map(w => w.model);
+  let psWindOk = false, psWaveOk = false;
+  if (data.poseidonWind) {
+    const p = poseidonCols(data.poseidonWind);
+    const spd = interpSeries(p.ts, p.col(1), epochs).map(v => v == null ? null : v * MS2KN); // w10 m/s -> kt
+    if (spd.some(v => v != null)) {
+      wh["wind_speed_10m_poseidon"] = spd;
+      wh["wind_direction_10m_poseidon"] = interpSeries(p.ts, p.col(2), epochs);
+      windModelsAll.push({ id: "poseidon", name: "Poseidon-METEO" });
+      psWindOk = true;
+    }
+  }
+
+  const windC = consensus(wh, "wind_speed_10m", windModelsAll);
+  const gustC = consensus(wh, "wind_gusts_10m", windModelsAll);
+  const dirRows = times.map((_, i) => circularMean(windModelsAll.map(m => (wh["wind_direction_10m_" + m.id] || [])[i])));
+
+  // per-source medians + major-discrepancy stripes
+  const srcMedians = (h, varName, models) => times.map((_, i) => median(models.map(m => (h[varName + "_" + m.id] || [])[i])));
+  const omWindS = srcMedians(wh, "wind_speed_10m", WIND_MODELS);
+  const wdWindS = windyWindModels.length ? srcMedians(wh, "wind_speed_10m", windyWindModels) : null;
+  const psWindS = psWindOk ? wh["wind_speed_10m_poseidon"] : null;
+  const stripesFor = (lists, thresh) => times.map((_, i) => {
+    const v = lists.map(l => l ? l[i] : null).filter(x => x != null);
+    return v.length >= 2 && (Math.max(...v) - Math.min(...v)) >= thresh;
+  });
+  const windStripes = stripesFor([omWindS, wdWindS, psWindS], DISC_WIND_KT);
+
+  let waveC = null, perRows = null, waveDirRows = null, waveOk = false;
+  const waveModelsAll = [...WAVE_MODELS];
+  const vh = (data.wave && data.wave.hourly) ? data.wave.hourly : { time: times };
+  for (const { model, data: d } of (data.windyWave || [])) {
+    vh["wave_height_" + model.id] = interpSeries(d.ts, d["waves_height-surface"], epochs);
+    vh["wave_period_" + model.id] = interpSeries(d.ts, d["waves_period-surface"], epochs);
+    vh["wave_direction_" + model.id] = interpSeries(d.ts, d["waves_direction-surface"], epochs);
+    waveModelsAll.push(model);
+  }
+  if (data.poseidonWave) {
+    const p = poseidonCols(data.poseidonWave);
+    const hgt = interpSeries(p.ts, p.col(0), epochs); // wht m (masked -999 near shore)
+    if (hgt.some(v => v != null)) {
+      vh["wave_height_poseidon"] = hgt;
+      vh["wave_direction_poseidon"] = interpSeries(p.ts, p.col(2), epochs);
+      waveModelsAll.push({ id: "poseidon", name: "Poseidon-WAM" });
+      psWaveOk = true;
+    }
+  }
+  if (data.wave || (data.windyWave || []).length || psWaveOk) {
+    waveC = consensus(vh, "wave_height", waveModelsAll);
+    perRows = times.map((_, i) => median(waveModelsAll.map(m => (vh["wave_period_" + m.id] || [])[i])));
+    waveDirRows = times.map((_, i) => circularMean(waveModelsAll.map(m => (vh["wave_direction_" + m.id] || [])[i])));
+    waveOk = waveC.some(r => r.med != null);
+  }
+  const omWaveS = srcMedians(vh, "wave_height", WAVE_MODELS);
+  const wdWaveS = windyWaveModels.length ? srcMedians(vh, "wave_height", windyWaveModels) : null;
+  const psWaveS = psWaveOk ? vh["wave_height_poseidon"] : null;
+  const waveStripes = stripesFor([omWaveS, wdWaveS, psWaveS], DISC_WAVE_M);
+
+  // conflict hours per day (wind or wave) for table flags
+  const conflictByDay = new Map();
+  times.forEach((t, i) => {
+    if (windStripes[i] || waveStripes[i]) {
+      const k = dayKey(t);
+      conflictByDay.set(k, (conflictByDay.get(k) || 0) + 1);
+    }
+  });
+
+  const days = buildDaily(times, windC, gustC, dirRows, waveOk ? waveC : null, perRows, waveDirRows);
+
+  // ---- title & summary ----
+  $("locTitle").textContent = `Point ${lat.toFixed(4)}, ${lon.toFixed(4)} — next ${days.length} days (local time)`;
+  const verdicts = days.map(d => verdict(d, th));
+  const goDays = days.filter((d, i) => verdicts[i] === "go");
+  const peakWind = maxOf(days.map(d => d.windMax));
+  const peakWave = maxOf(days.map(d => d.waveMax));
+  const goLabel = goDays.length
+    ? goDays.slice(0, 5).map(d => d.date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric" })).join(", ") + (goDays.length > 5 ? " +" + (goDays.length - 5) : "")
+    : "none in window";
+  $("summary").innerHTML = `
+    <div class="stat"><div class="k">Green (GO) days</div><div class="v" style="color:var(--green)">${goDays.length} / ${days.length}</div></div>
+    <div class="stat"><div class="k">Best windows</div><div class="v" style="font-size:15px">${goLabel}</div></div>
+    <div class="stat"><div class="k">Peak wind (consensus)</div><div class="v">${fmt(peakWind, 0)} kt</div></div>
+    <div class="stat"><div class="k">Peak wave (consensus)</div><div class="v">${waveOk ? fmt(peakWave) + " m" : "no wave data here"}</div></div>
+    <div class="stat"><div class="k">Models wind / wave</div><div class="v">${Math.max(...days.map(d => d.nWind))} / ${waveOk ? Math.max(...days.map(d => d.nWave)) : 0}</div></div>
+    <div class="stat"><div class="k">Source conflicts ⚠</div><div class="v" style="color:${[...conflictByDay.values()].filter(c => c >= DISC_HOURS_FLAG).length ? "var(--red)" : "var(--green)"}">${[...conflictByDay.values()].filter(c => c >= DISC_HOURS_FLAG).length} days</div></div>`;
+
+  // ---- charts ----
+  const srcSeries = (om, wd, ps) => [
+    { vals: om, color: SRC.om.color, width: 2 },
+    ...(wd ? [{ vals: wd, color: SRC.windy.color, width: 2 }] : []),
+    ...(ps ? [{ vals: ps, color: SRC.poseidon.color, width: 2.2 }] : []),
+  ];
+  $("windChart").innerHTML = chart(windC, times, {
+    yStep: 5, minYMax: 25,
+    bandColor: "rgba(140,165,200,.16)",
+    series: [{ vals: gustC.map(r => r.med), color: "#8aa3c4", width: 1.2, dash: "3 3" }, ...srcSeries(omWindS, wdWindS, psWindS)],
+    stripes: windStripes,
+    thresholds: [{ v: th.windGo, color: "#f5a623" }, { v: th.windNo, color: "#ff5c5c" }],
+  });
+  $("waveChart").innerHTML = waveOk
+    ? chart(waveC, times, {
+        yStep: 0.5, minYMax: 2,
+        bandColor: "rgba(140,165,200,.16)",
+        series: srcSeries(omWaveS, wdWaveS, psWaveS),
+        stripes: waveStripes,
+        thresholds: [{ v: th.waveGo, color: "#f5a623" }, { v: th.waveNo, color: "#ff5c5c" }],
+      })
+    : `<div class="legend">No wave-model data at this point (models mask cells very close to shore) — move the point a little offshore for waves.</div>`;
+
+  // ---- table ----
+  const tb = $("daily").querySelector("tbody");
+  tb.innerHTML = "";
+  days.forEach((d, i) => {
+    const vd = verdicts[i];
+    const [agLabel, agColor] = agreementLabel(d.spread);
+    const tr = document.createElement("tr");
+    if (d.nWind <= 1 && d.nWave <= 1) tr.className = "rowdim";
+    tr.innerHTML = `
+      <td class="day">${d.date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}</td>
+      <td>${fmt(d.windAvg, 0)}</td>
+      <td><b>${fmt(d.windMax, 0)}</b> <span class="band">${d.windMaxLo != null ? `(${fmt(d.windMaxLo, 0)}–${fmt(d.windMaxHi, 0)})` : ""}</span></td>
+      <td>${fmt(d.gustMax, 0)}</td>
+      <td>${dirLabel(d.dir)}</td>
+      <td>${fmt(d.waveAvg)}</td>
+      <td><b>${fmt(d.waveMax)}</b> <span class="band">${d.waveMaxLo != null ? `(${fmt(d.waveMaxLo)}–${fmt(d.waveMaxHi)})` : ""}</span></td>
+      <td>${fmt(d.period)}</td>
+      <td>${d.nWind}/${d.nWave}</td>
+      <td style="color:${agColor}">${agLabel}</td>
+      <td>${vd ? `<span class="verdict v-${vd}">${vd === "go" ? "GO" : vd === "care" ? "CARE" : "NO"}</span>` : "—"}${(conflictByDay.get(d.key) || 0) >= DISC_HOURS_FLAG ? ` <span title="Sources disagree materially for ${conflictByDay.get(d.key)} h this day — re-check closer to departure" style="cursor:help">⚠</span>` : ""}</td>`;
+    tb.appendChild(tr);
+  });
+
+  $("crosscheck").innerHTML =
+    `Visual cross-check: <a target="_blank" href="https://www.windy.com/?${lat.toFixed(3)},${lon.toFixed(3)},9">Windy at this point</a> · ` +
+    `<a target="_blank" href="https://poseidon.hcmr.gr/map?model=wave&param=wht&coords=${lat.toFixed(3)},${lon.toFixed(3)},9">Poseidon waves</a> · ` +
+    `<a target="_blank" href="https://poseidon.hcmr.gr/map?model=meteo&param=w10&coords=${lat.toFixed(3)},${lon.toFixed(3)},9">Poseidon wind</a>`;
+
+  $("report").classList.remove("hide");
+}
+
+/* ---------- wiring ---------- */
+
+let lastData = null, lastPos = null;
+
+async function run() {
+  const pos = parseCoords($("coords").value);
+  const st = $("status");
+  st.className = "";
+  if (!pos) { st.className = "error"; st.textContent = "Could not parse coordinates — use decimal degrees like 36.65, 26.35"; return; }
+  st.textContent = `Fetching ${WIND_MODELS.length} wind models + ${WAVE_MODELS.length} wave models for ${pos.lat}, ${pos.lon} …`;
+  $("go").disabled = true;
+  try {
+    const data = await fetchAll(pos.lat, pos.lon);
+    lastData = data; lastPos = pos;
+    render(pos.lat, pos.lon, data);
+    const nW = WIND_MODELS.length + data.windyWind.length + (data.poseidonWind ? 1 : 0);
+    const nV = WAVE_MODELS.length + data.windyWave.length + (data.poseidonWave ? 1 : 0);
+    st.textContent = `Updated ${new Date().toLocaleTimeString()} — up to ${nW} wind + ${nV} wave models across ${1 + (data.windyWind.length || data.windyWave.length ? 1 : 0) + (data.poseidonWind || data.poseidonWave ? 1 : 0)} sources.`
+      + (data.windyErrors.length ? "  ⚠ Windy: " + data.windyErrors.join("; ") : "")
+      + (data.poseidonErrors.length ? "  ⚠ Poseidon: " + data.poseidonErrors.join("; ") : "");
+    saveRecent(pos);
+  } catch (e) {
+    st.className = "error";
+    st.textContent = "Fetch failed: " + e.message + " (check internet connection)";
+  } finally {
+    $("go").disabled = false;
+  }
+}
+
+function saveRecent(pos) {
+  try {
+    let rec = JSON.parse(localStorage.getItem("totoro_crossing_recent") || "[]");
+    rec = rec.filter(r => r.lat !== pos.lat || r.lon !== pos.lon);
+    rec.unshift(pos);
+    localStorage.setItem("totoro_crossing_recent", JSON.stringify(rec.slice(0, 4)));
+  } catch (e) { /* private mode */ }
+  drawPresets();
+}
+
+function drawPresets() {
+  let rec = [];
+  try { rec = JSON.parse(localStorage.getItem("totoro_crossing_recent") || "[]"); } catch (e) {}
+  const items = [...PRESETS, ...rec.filter(r => !PRESETS.some(p => p.lat === r.lat && p.lon === r.lon)).map(r => ({ name: r.lat.toFixed(2) + ", " + r.lon.toFixed(2), ...r }))];
+  $("presets").innerHTML = "";
+  items.slice(0, 7).forEach(p => {
+    const b = document.createElement("button");
+    b.className = "chip";
+    b.textContent = p.name;
+    b.onclick = () => { $("coords").value = p.lat + ", " + p.lon; run(); };
+    $("presets").appendChild(b);
+  });
+}
+
+/* ---------- Mapbox picker (token + tile style shared with TOTORO atlas) ---------- */
+
+const MAPBOX_TOKEN = "pk.eyJ1Ijoic2V5bXVydGFyaSIsImEiOiJjbXBqaXlzZWkweDVxMnBzNjVobzd6YnVxIn0.RIZTZC7afocKkRzxvMV12Q";
+const AEGEAN_BOUNDS = [[34.8, 22.3], [41.2, 28.8]]; // entire Aegean: Crete to Thrace, Attica to Bodrum
+
+let leafletReady = null, pickMap = null, pickMarker = null, pickPos = null;
+
+function loadLeaflet() {
+  if (leafletReady) return leafletReady;
+  leafletReady = new Promise((resolve, reject) => {
+    const css = document.createElement("link");
+    css.rel = "stylesheet";
+    css.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+    document.head.appendChild(css);
+    const s = document.createElement("script");
+    s.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+    s.onload = resolve;
+    s.onerror = () => { leafletReady = null; reject(new Error("could not load Leaflet from CDN")); };
+    document.head.appendChild(s);
+  });
+  return leafletReady;
+}
+
+function setPick(ll) {
+  pickPos = ll;
+  if (!pickMarker) {
+    pickMarker = L.marker(ll, { draggable: true }).addTo(pickMap);
+    pickMarker.on("dragend", () => setPick(pickMarker.getLatLng()));
+  } else pickMarker.setLatLng(ll);
+  $("pickCoords").textContent = ll.lat.toFixed(4) + ", " + ll.lng.toFixed(4);
+  $("pickUse").disabled = false;
+}
+
+async function openMapPicker() {
+  $("mapModal").classList.remove("hide");
+  try { await loadLeaflet(); } catch (e) {
+    $("mapModal").classList.add("hide");
+    $("status").className = "error";
+    $("status").textContent = "Map picker unavailable: " + e.message;
+    return;
+  }
+  if (!pickMap) {
+    pickMap = L.map("pickMap", { minZoom: 4, maxZoom: 15 });
+    pickMap.fitBounds(AEGEAN_BOUNDS);
+    let fellBack = false;
+    const mb = L.tileLayer(
+      `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`,
+      { tileSize: 512, zoomOffset: -1, maxZoom: 18, attribution: '&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; OpenStreetMap' }
+    ).addTo(pickMap);
+    mb.on("tileerror", () => {
+      if (fellBack) return;
+      fellBack = true;
+      pickMap.removeLayer(mb);
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        { maxZoom: 18, attribution: "&copy; OpenStreetMap" }).addTo(pickMap);
+    });
+    pickMap.on("click", e => setPick(e.latlng));
+    // pre-place the marker on already-entered coordinates
+    const cur = parseCoords($("coords").value);
+    if (cur) setPick(L.latLng(cur.lat, cur.lon));
+  }
+  setTimeout(() => pickMap.invalidateSize(), 60);
+}
+
+$("mapBtn").onclick = openMapPicker;
+$("pickClose").onclick = () => $("mapModal").classList.add("hide");
+$("mapModal").addEventListener("click", e => { if (e.target === $("mapModal")) $("mapModal").classList.add("hide"); });
+$("pickUse").onclick = () => {
+  if (!pickPos) return;
+  $("coords").value = pickPos.lat.toFixed(4) + ", " + pickPos.lng.toFixed(4);
+  $("mapModal").classList.add("hide");
+  run();
+};
+
+$("go").onclick = run;
+$("coords").addEventListener("keydown", e => { if (e.key === "Enter") run(); });
+["thWindGo", "thWindNo", "thWaveGo", "thWaveNo"].forEach(id =>
+  $(id).addEventListener("change", () => { if (lastData && lastPos) render(lastPos.lat, lastPos.lon, lastData); }));
+drawPresets();
+</script>
+</body>
+</html>
