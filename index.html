@@ -499,11 +499,16 @@ function chart(rows, times, opts) {
   const W = 1020, H = 260, padL = 44, padR = 10, padT = 12, padB = 30;
   const iw = W - padL - padR, ih = H - padT - padB;
   const n = rows.length;
-  const seriesMax = (opts.series || []).flatMap(s => s.vals).filter(v => v != null);
-  const yMaxData = Math.max(opts.minYMax, ...rows.map(r => r.hi ?? 0), ...(seriesMax.length ? seriesMax : [0]));
-  const yMax = Math.ceil(yMaxData * 1.15 / opts.yStep) * opts.yStep;
+  let yMax;
+  if (opts.maxY) {
+    yMax = opts.maxY; // fixed axis cap; higher values clip flat at the top
+  } else {
+    const seriesMax = (opts.series || []).flatMap(s => s.vals).filter(v => v != null);
+    const yMaxData = Math.max(opts.minYMax, ...rows.map(r => r.hi ?? 0), ...(seriesMax.length ? seriesMax : [0]));
+    yMax = Math.ceil(yMaxData * 1.15 / opts.yStep) * opts.yStep;
+  }
   const x = i => padL + iw * i / (n - 1);
-  const y = v => padT + ih * (1 - v / yMax);
+  const y = v => padT + ih * (1 - Math.min(v, yMax) / yMax);
 
   let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
 
@@ -739,7 +744,7 @@ function render(lat, lon, data) {
     ...(ps ? [{ vals: ps, color: SRC.poseidon.color, width: 3.5 }] : []),
   ];
   $("windChart").innerHTML = chart(windC, times, {
-    yStep: 5, minYMax: 25,
+    yStep: 5, minYMax: 25, maxY: 35,
     bandColor: "rgba(140,165,200,.16)",
     series: [{ vals: gustC.map(r => r.med), color: "#8aa3c4", width: 1.2, dash: "3 3" }, ...srcSeries(wdWindS, psWindS)],
     stripes: windStripes,
@@ -747,7 +752,7 @@ function render(lat, lon, data) {
   });
   $("waveChart").innerHTML = waveOk
     ? chart(waveC, times, {
-        yStep: 0.5, minYMax: 2,
+        yStep: 0.5, minYMax: 2, maxY: 2,
         bandColor: "rgba(140,165,200,.16)",
         series: srcSeries(wdWaveS, psWaveS),
         stripes: waveStripes,
