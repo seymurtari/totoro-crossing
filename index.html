@@ -145,6 +145,13 @@
     border-radius: 10px;
   }
   #pickMap .leaflet-container { font-family: inherit; }
+
+  /* Greek institute maps panel */
+  #greekPanel.hide { display: none; }
+  .greek-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+  .greek-grid figure { margin: 0; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px; }
+  .greek-grid figcaption { font-size: 12.5px; color: var(--dim); margin-bottom: 6px; }
+  .greek-grid img { width: 100%; height: auto; border-radius: 6px; display: block; }
 </style>
 </head>
 <body>
@@ -158,6 +165,7 @@
       <input type="text" id="coords" placeholder="lat, lon  e.g. 36.65, 26.35" value="36.9, 26.4">
       <button id="go">Get consensus</button>
       <button id="mapBtn" style="background:var(--card2);color:var(--accent);border:1px solid var(--accent)">Mapbox 🗺</button>
+      <button id="greekBtn" style="background:var(--card2);color:var(--green);border:1px solid var(--green)">Greek maps 🌊</button>
       <span id="presets"></span>
       <span class="thresholds">
         Verdict limits:
@@ -176,6 +184,25 @@
       <button id="pickClose" class="x">Hide map</button>
     </div>
     <div id="pickMap"></div>
+  </div>
+
+  <div id="greekPanel" class="panel hide">
+    <div class="map-head">
+      <h2>Greek institute forecast maps — NOA (meteo.gr) &amp; UoA (forecast.uoa.gr)</h2>
+      <span class="coords" id="greekTime">+0 h</span>
+      <button id="greekClose" class="x">Hide maps</button>
+    </div>
+    <div class="row" style="margin-bottom:10px">
+      <label style="min-width:70px">Lead time</label>
+      <input type="range" id="greekSlider" min="0" max="40" step="1" value="0" style="flex:1;accent-color:var(--accent)">
+    </div>
+    <div class="greek-grid">
+      <figure><figcaption>NOA WAM — wave height</figcaption><img id="gNoaWave" alt="NOA wave map" loading="lazy"></figure>
+      <figure><figcaption>UoA WAM — Aegean wave height</figcaption><img id="gUoaWave" alt="UoA Aegean wave map" loading="lazy"></figure>
+      <figure><figcaption>NOA BOLAM — 10 m wind</figcaption><img id="gNoaWind" alt="NOA wind map" loading="lazy"></figure>
+      <figure><figcaption>UoA SKIRON — 10 m wind (Med)</figcaption><img id="gUoaWind" alt="UoA SKIRON wind map" loading="lazy"></figure>
+    </div>
+    <div class="foot">These are the institutes' own rendered maps (hotlinked live, ~5-day range, 3-hourly steps; the timestamp printed on each map is authoritative and in UTC). Neither institute publishes machine-readable point data, so these serve as a visual cross-check beside the Windy/Poseidon consensus rather than joining the lines. Credits: <a href="https://www.meteo.gr/meteomaps/" target="_blank">NOA meteo.gr</a> · <a href="https://forecast.uoa.gr/en/forecast-maps/wave/aegean-sea" target="_blank">UoA forecast.uoa.gr</a>.</div>
   </div>
 
   <div id="report" class="hide">
@@ -863,6 +890,31 @@ async function openMapPicker() {
   }
   setTimeout(() => pickMap.invalidateSize(), 60);
 }
+
+/* ---------- Greek institute maps (NOA + UoA, image frames, 3-hourly) ---------- */
+
+function greekFrame(step) {
+  const h = step * 3;
+  const hhh = String(h).padStart(3, "0");
+  $("gNoaWave").src = `https://stratus.meteo.noa.gr/forecast/WAMNEW/wavehgt_GR_${step}.png`;
+  $("gUoaWave").src = `https://forecast.uoa.gr/maps/0day/WAM/AEG/MWH/${hhh}.MWH.png`;
+  $("gNoaWind").src = `https://stratus.meteo.noa.gr/forecast/BOLAM2020/f_wind10_f_${h}.png`;
+  $("gUoaWind").src = `https://forecast.uoa.gr/maps/0day/SKIRON/GRID1/wind10m/${h < 6 ? "006" : hhh}.wind10m.png`;
+  $("greekTime").textContent = `+${h} h`;
+}
+["gNoaWave", "gUoaWave", "gNoaWind", "gUoaWind"].forEach(id => {
+  $(id).addEventListener("error", () => { $(id).style.opacity = ".15"; });
+  $(id).addEventListener("load", () => { $(id).style.opacity = "1"; });
+});
+let greekInit = false;
+$("greekBtn").onclick = () => {
+  const p = $("greekPanel");
+  if (!p.classList.contains("hide")) { p.classList.add("hide"); return; }
+  p.classList.remove("hide");
+  if (!greekInit) { greekInit = true; greekFrame(0); }
+};
+$("greekClose").onclick = () => $("greekPanel").classList.add("hide");
+$("greekSlider").addEventListener("input", e => greekFrame(+e.target.value));
 
 $("mapBtn").onclick = openMapPicker;
 $("pickClose").onclick = () => $("mapPanel").classList.add("hide");

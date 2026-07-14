@@ -12,6 +12,7 @@ Pick a point (paste coordinates, tap a preset, or use the inline Mapbox satellit
 - **Poseidon HCMR** (high-resolution Aegean METEO / WAM models, days 1–5) — thick cyan lines, shown raw; the most trusted source.
 - **Charts:** wave height first, then wind speed; per-source median lines over a model min–max band, with red stripes where the two sources disagree by ≥ 6 kt wind or ≥ 0.5 m wave.
 - **Daily table:** wave avg/max (m), period, wind avg/max (kt), gusts, direction, model counts, agreement rating, and a GO / CARE / NO verdict with editable thresholds.
+- **Greek maps panel:** a "Greek maps 🌊" button expands live forecast maps from NOA/meteo.gr (WAM waves, BOLAM wind) and Univ. of Athens (WAM Aegean waves, SKIRON wind) with a shared 3-hourly lead-time slider — visual cross-check only, since neither institute publishes point data.
 - All times **GMT+3** (Europe/Istanbul, no DST); both sources' UTC timestamps are converted onto one hourly grid.
 
 ## iPhone home screen
