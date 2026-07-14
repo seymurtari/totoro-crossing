@@ -189,7 +189,7 @@
       <div class="legend">
         <span class="sw" style="background:#4da3ff"></span>Open-Meteo
         <span class="sw" style="background:#ffa94d"></span>Windy
-        <span class="sw" style="background:#33e0d0"></span>Poseidon
+        <span class="sw" style="background:#33e0d0;height:12px"></span>Poseidon
         <span class="sw" style="background:rgba(140,165,200,.35)"></span>all-model min–max
         <span class="sw" style="background:rgba(255,92,92,.35)"></span>⚠ sources diverge ≥ 0.5 m
       </div>
@@ -201,7 +201,7 @@
       <div class="legend">
         <span class="sw" style="background:#4da3ff"></span>Open-Meteo
         <span class="sw" style="background:#ffa94d"></span>Windy
-        <span class="sw" style="background:#33e0d0"></span>Poseidon
+        <span class="sw" style="background:#33e0d0;height:12px"></span>Poseidon
         <span class="sw" style="background:rgba(140,165,200,.35)"></span>all-model min–max
         <span class="sw" style="background:#8aa3c4;height:3px"></span>gusts
         <span class="sw" style="background:rgba(255,92,92,.35)"></span>⚠ sources diverge ≥ 6 kt
@@ -697,10 +697,11 @@ function render(lat, lon, data) {
     <div class="stat"><div class="k">Source conflicts ⚠</div><div class="v" style="color:${[...conflictByDay.values()].filter(c => c >= DISC_HOURS_FLAG).length ? "var(--red)" : "var(--green)"}">${[...conflictByDay.values()].filter(c => c >= DISC_HOURS_FLAG).length} days</div></div>`;
 
   // ---- charts ----
+  // Poseidon drawn last and thickest — the high-res Aegean model is the most trusted source
   const srcSeries = (om, wd, ps) => [
     { vals: om, color: SRC.om.color, width: 2 },
     ...(wd ? [{ vals: wd, color: SRC.windy.color, width: 2 }] : []),
-    ...(ps ? [{ vals: ps, color: SRC.poseidon.color, width: 2.2 }] : []),
+    ...(ps ? [{ vals: ps, color: SRC.poseidon.color, width: 3.5 }] : []),
   ];
   $("windChart").innerHTML = chart(windC, times, {
     yStep: 5, minYMax: 25,
