@@ -90,7 +90,7 @@
     padding: 6px 12px;
   }
   .chip:hover { border-color: var(--accent); }
-  .thresholds { margin-left: auto; display: flex; gap: 14px; align-items: center; font-size: 13px; color: var(--dim); }
+  .thresholds { margin-left: auto; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 13px; color: var(--dim); min-width: 0; }
 
   #status { margin-top: 14px; color: var(--dim); font-size: 14px; }
   #status.error { color: var(--red); }
@@ -128,27 +128,22 @@
   .hide { display: none; }
   .tablewrap { overflow-x: auto; }
 
-  /* Mapbox picker modal */
-  .modal {
-    position: fixed; inset: 0; z-index: 60;
-    background: rgba(3, 9, 18, .78);
-    display: flex; align-items: center; justify-content: center;
+  /* Inline Mapbox picker panel (no popup — expands in the page flow) */
+  #mapPanel.hide { display: none; }
+  .map-head {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+    margin-bottom: 10px;
   }
-  .modal.hide { display: none; } /* .modal comes after .hide, so re-assert hiding explicitly */
-  .modal-box {
-    width: min(940px, 95vw); height: min(640px, 90vh);
-    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-    display: flex; flex-direction: column; overflow: hidden;
+  .map-head h2 { margin-bottom: 0; flex: 1; min-width: 180px; }
+  .map-head .coords { font-size: 14px; color: var(--gold); }
+  .map-head button { padding: 8px 16px; font-size: 13.5px; }
+  .map-head .x { background: var(--card2); color: var(--dim); border: 1px solid var(--line); }
+  #pickMap {
+    height: min(420px, 55vh);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
   }
-  .modal-head {
-    display: flex; align-items: center; gap: 12px;
-    padding: 12px 16px; border-bottom: 1px solid var(--line);
-  }
-  .modal-head h3 { font-size: 15px; color: var(--accent); font-weight: 700; flex: 1; }
-  .modal-head .coords { font-size: 14px; color: var(--gold); min-width: 150px; text-align: right; }
-  .modal-head button { padding: 7px 16px; font-size: 13.5px; }
-  .modal-head .x { background: var(--card2); color: var(--dim); border: 1px solid var(--line); }
-  #pickMap { flex: 1; background: var(--bg); }
   #pickMap .leaflet-container { font-family: inherit; }
 </style>
 </head>
@@ -171,6 +166,16 @@
       </span>
     </div>
     <div id="status">Enter coordinates (decimal degrees) and press Get consensus.</div>
+  </div>
+
+  <div id="mapPanel" class="panel hide">
+    <div class="map-head">
+      <h2>Pick a point — tap the map, drag the marker to fine-tune</h2>
+      <span class="coords" id="pickCoords">—</span>
+      <button id="pickUse" disabled>Use this point</button>
+      <button id="pickClose" class="x">Hide map</button>
+    </div>
+    <div id="pickMap"></div>
   </div>
 
   <div id="report" class="hide">
@@ -232,18 +237,6 @@
         Data: <a href="https://open-meteo.com/" target="_blank">Open-Meteo</a> (free, non-commercial) + <a href="https://api.windy.com/" target="_blank">Windy Point Forecast API</a> (personal key embedded in this file; quota-limited) + <a href="https://poseidon.hcmr.gr/" target="_blank">Poseidon HCMR</a> (via public CORS relay, so it can occasionally be slow or unavailable — the page then continues without it; wave grid masked very close to shore). All times local to the point.
       </div>
     </div>
-  </div>
-</div>
-
-<div id="mapModal" class="modal hide">
-  <div class="modal-box">
-    <div class="modal-head">
-      <h3>Pick a point — click the map (drag the marker to fine-tune)</h3>
-      <span class="coords" id="pickCoords">—</span>
-      <button id="pickUse" disabled>Use this point</button>
-      <button id="pickClose" class="x">✕</button>
-    </div>
-    <div id="pickMap"></div>
   </div>
 </div>
 
@@ -831,9 +824,13 @@ function setPick(ll) {
 }
 
 async function openMapPicker() {
-  $("mapModal").classList.remove("hide");
+  if (!$("mapPanel").classList.contains("hide")) { // already open -> toggle closed
+    $("mapPanel").classList.add("hide");
+    return;
+  }
+  $("mapPanel").classList.remove("hide");
   try { await loadLeaflet(); } catch (e) {
-    $("mapModal").classList.add("hide");
+    $("mapPanel").classList.add("hide");
     $("status").className = "error";
     $("status").textContent = "Map picker unavailable: " + e.message;
     return;
@@ -862,12 +859,11 @@ async function openMapPicker() {
 }
 
 $("mapBtn").onclick = openMapPicker;
-$("pickClose").onclick = () => $("mapModal").classList.add("hide");
-$("mapModal").addEventListener("click", e => { if (e.target === $("mapModal")) $("mapModal").classList.add("hide"); });
+$("pickClose").onclick = () => $("mapPanel").classList.add("hide");
 $("pickUse").onclick = () => {
   if (!pickPos) return;
   $("coords").value = pickPos.lat.toFixed(4) + ", " + pickPos.lng.toFixed(4);
-  $("mapModal").classList.add("hide");
+  $("mapPanel").classList.add("hide");
   run();
 };
 
