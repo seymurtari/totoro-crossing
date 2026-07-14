@@ -234,7 +234,7 @@
       <div class="foot" id="crosscheck"></div>
       <div class="foot">
         Each colored line is one source's own median (Open-Meteo = 4–5 models, Windy = 2 models, Poseidon = 1 high-res Aegean model, days 1–5 only). Windy series are lightly smoothed (centered ±3 h weighted average) to damp step-to-step run noise. Red stripes + ⚠ mark hours where the sources themselves disagree by ≥ 6 kt wind or ≥ 0.5 m wave — the days to re-check before committing. Grey band = min–max across all models; table numbers = all-model consensus (median). Model horizons differ (3–16 d) so late days rest on fewer models. Agreement = band width vs median (tight ≤ 25 %, fair ≤ 50 %, poor beyond). Beyond day 7 treat everything as tendency, not forecast.
-        Data: <a href="https://open-meteo.com/" target="_blank">Open-Meteo</a> (free, non-commercial) + <a href="https://api.windy.com/" target="_blank">Windy Point Forecast API</a> (personal key embedded in this file; quota-limited) + <a href="https://poseidon.hcmr.gr/" target="_blank">Poseidon HCMR</a> (via public CORS relay, so it can occasionally be slow or unavailable — the page then continues without it; wave grid masked very close to shore). All times local to the point.
+        Data: <a href="https://open-meteo.com/" target="_blank">Open-Meteo</a> (free, non-commercial) + <a href="https://api.windy.com/" target="_blank">Windy Point Forecast API</a> (personal key embedded in this file; quota-limited) + <a href="https://poseidon.hcmr.gr/" target="_blank">Poseidon HCMR</a> (via public CORS relay, so it can occasionally be slow or unavailable — the page then continues without it; wave grid masked very close to shore). All times GMT+3 (Europe/Istanbul, no DST): the Open-Meteo grid is requested in that zone, and Windy's and Poseidon's UTC timestamps are converted onto it, so every chart hour and table day means the same wall-clock moment across all three sources.
       </div>
     </div>
   </div>
@@ -417,12 +417,12 @@ async function fetchAll(lat, lon) {
   const windURL = "https://api.open-meteo.com/v1/forecast"
     + `?latitude=${lat}&longitude=${lon}`
     + "&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m"
-    + `&forecast_days=${DAYS}&wind_speed_unit=kn&timezone=auto`
+    + `&forecast_days=${DAYS}&wind_speed_unit=kn&timezone=Europe%2FIstanbul`
     + "&models=" + WIND_MODELS.map(m => m.id).join(",");
   const waveURL = "https://marine-api.open-meteo.com/v1/marine"
     + `?latitude=${lat}&longitude=${lon}`
     + "&hourly=wave_height,wave_period,wave_direction"
-    + `&forecast_days=${DAYS}&timezone=auto`
+    + `&forecast_days=${DAYS}&timezone=Europe%2FIstanbul`
     + "&models=" + WAVE_MODELS.map(m => m.id).join(",");
 
   const settled = await Promise.allSettled([
@@ -680,7 +680,7 @@ function render(lat, lon, data) {
   const days = buildDaily(times, windC, gustC, dirRows, waveOk ? waveC : null, perRows, waveDirRows);
 
   // ---- title & summary ----
-  $("locTitle").textContent = `Point ${lat.toFixed(4)}, ${lon.toFixed(4)} — next ${days.length} days (local time)`;
+  $("locTitle").textContent = `Point ${lat.toFixed(4)}, ${lon.toFixed(4)} — next ${days.length} days (GMT+3)`;
   const verdicts = days.map(d => verdict(d, th));
   const goDays = days.filter((d, i) => verdicts[i] === "go");
   const peakWind = maxOf(days.map(d => d.windMax));
