@@ -557,7 +557,7 @@ function chart(rows, times, opts) {
   // y grid
   for (let v = 0; v <= yMax; v += opts.yStep) {
     s += `<line x1="${padL}" y1="${y(v)}" x2="${W - padR}" y2="${y(v)}" stroke="#24406e" stroke-width="0.6"/>`;
-    s += `<text x="${padL - 7}" y="${y(v) + 4}" fill="#8aa3c4" font-size="11" text-anchor="end">${v}</text>`;
+    s += `<text x="${padL - 7}" y="${y(v) + 4}" fill="#dce7f5" font-size="13" font-weight="600" text-anchor="end">${v}</text>`;
   }
   // day boundaries + labels
   const dayFmt = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric" });
@@ -566,8 +566,8 @@ function chart(rows, times, opts) {
     if (d.getHours() === 0) {
       s += `<line x1="${x(i)}" y1="${padT}" x2="${x(i)}" y2="${padT + ih}" stroke="#24406e" stroke-width="0.8"/>`;
       const parts = dayFmt.format(d).split(" ");
-      s += `<text x="${x(i) + 3}" y="${H - 16}" fill="#8aa3c4" font-size="10.5">${parts[0]}</text>`;
-      s += `<text x="${x(i) + 3}" y="${H - 5}" fill="#8aa3c4" font-size="10.5">${parts[1]}</text>`;
+      s += `<text x="${x(i) + 3}" y="${H - 17}" fill="#dce7f5" font-size="12.5" font-weight="600">${parts[0]}</text>`;
+      s += `<text x="${x(i) + 3}" y="${H - 4}" fill="#dce7f5" font-size="12.5" font-weight="600">${parts[1]}</text>`;
     }
   }
   // major-discrepancy stripes (behind everything else)
