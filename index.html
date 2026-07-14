@@ -150,7 +150,7 @@
 <body>
 <div class="wrap">
   <h1><span class="boat">⛵</span> TOTORO Crossing</h1>
-  <div class="sub">14-day multi-source consensus for wind speed &amp; wave height — <span style="color:#4da3ff">Open-Meteo</span> (ECMWF · GFS · ICON · UKMO / WAM · GWAM · EWAM · MFWAM · GFSwave) + <span style="color:#ffa94d">Windy</span> (GFS · ICON-EU / GFSwave · ICON-EU-wave) + <span style="color:#33e0d0">Poseidon HCMR</span> (Aegean METEO / WAM, days 1–5)</div>
+  <div class="sub">10-day consensus for wave height &amp; wind speed — <span style="color:#ffa94d">Windy</span> (GFS · ICON-EU / GFSwave · ICON-EU-wave) + <span style="color:#33e0d0">Poseidon HCMR</span> (high-res Aegean METEO / WAM, days 1–5)</div>
 
   <div class="panel">
     <div class="row">
@@ -187,10 +187,9 @@
     <div class="panel">
       <h2>Wave height — by source (meters)</h2>
       <div class="legend">
-        <span class="sw" style="background:#4da3ff"></span>Open-Meteo
         <span class="sw" style="background:#ffa94d"></span>Windy
         <span class="sw" style="background:#33e0d0;height:12px"></span>Poseidon
-        <span class="sw" style="background:rgba(140,165,200,.35)"></span>all-model min–max
+        <span class="sw" style="background:rgba(140,165,200,.35)"></span>model min–max
         <span class="sw" style="background:rgba(255,92,92,.35)"></span>⚠ sources diverge ≥ 0.5 m
       </div>
       <div id="waveChart"></div>
@@ -199,10 +198,9 @@
     <div class="panel">
       <h2>Wind speed — by source (knots)</h2>
       <div class="legend">
-        <span class="sw" style="background:#4da3ff"></span>Open-Meteo
         <span class="sw" style="background:#ffa94d"></span>Windy
         <span class="sw" style="background:#33e0d0;height:12px"></span>Poseidon
-        <span class="sw" style="background:rgba(140,165,200,.35)"></span>all-model min–max
+        <span class="sw" style="background:rgba(140,165,200,.35)"></span>model min–max
         <span class="sw" style="background:#8aa3c4;height:3px"></span>gusts
         <span class="sw" style="background:rgba(255,92,92,.35)"></span>⚠ sources diverge ≥ 6 kt
       </div>
@@ -233,8 +231,8 @@
       </div>
       <div class="foot" id="crosscheck"></div>
       <div class="foot">
-        Each colored line is one source's own median (Open-Meteo = 4–5 models, Windy = 2 models, Poseidon = 1 high-res Aegean model, days 1–5 only). Windy series are lightly smoothed (centered ±3 h weighted average) to damp step-to-step run noise, and Windy + Open-Meteo wave heights get a light extra ±1 h rolling average; Poseidon is shown raw. Red stripes + ⚠ mark hours where the sources themselves disagree by ≥ 6 kt wind or ≥ 0.5 m wave — the days to re-check before committing. Grey band = min–max across all models; table numbers = all-model consensus (median). Model horizons differ (3–16 d) so late days rest on fewer models. Agreement = band width vs median (tight ≤ 25 %, fair ≤ 50 %, poor beyond). Beyond day 7 treat everything as tendency, not forecast.
-        Data: <a href="https://open-meteo.com/" target="_blank">Open-Meteo</a> (free, non-commercial) + <a href="https://api.windy.com/" target="_blank">Windy Point Forecast API</a> (personal key embedded in this file; quota-limited) + <a href="https://poseidon.hcmr.gr/" target="_blank">Poseidon HCMR</a> (via public CORS relay, so it can occasionally be slow or unavailable — the page then continues without it; wave grid masked very close to shore). All times GMT+3 (Europe/Istanbul, no DST): the Open-Meteo grid is requested in that zone, and Windy's and Poseidon's UTC timestamps are converted onto it, so every chart hour and table day means the same wall-clock moment across all three sources.
+        Each colored line is one source's own median (Windy = 2 models, Poseidon = 1 high-res Aegean model, days 1–5 only). Windy series are lightly smoothed (centered ±3 h weighted average, plus a light ±1 h pass on wave height) to damp step-to-step run noise; Poseidon is shown raw. Red stripes + ⚠ mark hours where the two sources disagree by ≥ 6 kt wind or ≥ 0.5 m wave — the days to re-check before committing. Grey band = min–max across all models; table numbers = all-model consensus (median). Horizons: Windy GFS ≈ 10 d, ICON-EU ≈ 5 d, Poseidon ≈ 5 d — beyond day 5 the forecast rests on Windy alone (and the wave line on a single model), so treat late days as tendency, not forecast. Agreement = band width vs median (tight ≤ 25 %, fair ≤ 50 %, poor beyond).
+        Data: <a href="https://api.windy.com/" target="_blank">Windy Point Forecast API</a> (personal key embedded in this file; quota-limited) + <a href="https://poseidon.hcmr.gr/" target="_blank">Poseidon HCMR</a> (via public CORS relay, so it can occasionally be slow or unavailable — the page then continues without it; wave grid masked very close to shore). All times GMT+3 (Europe/Istanbul, no DST): both sources' UTC timestamps are converted onto the same hourly grid, so every chart hour and table day means the same wall-clock moment for both sources.
       </div>
     </div>
   </div>
@@ -248,20 +246,8 @@ const PRESETS = [
   { name: "Open Aegean", lat: 36.50, lon: 26.50 },
   { name: "Datça–Kos",   lat: 36.75, lon: 27.15 },
 ];
-const WIND_MODELS = [
-  { id: "ecmwf_ifs025",  name: "ECMWF" },
-  { id: "gfs_seamless",  name: "GFS" },
-  { id: "icon_seamless", name: "ICON" },
-  { id: "ukmo_seamless", name: "UKMO" },
-];
-const WAVE_MODELS = [
-  { id: "ecmwf_wam025",     name: "ECMWF-WAM" },
-  { id: "gwam",             name: "DWD-GWAM" },
-  { id: "ewam",             name: "DWD-EWAM" },
-  { id: "meteofrance_wave", name: "MFWAM" },
-  { id: "ncep_gfswave025",  name: "GFSwave" },
-];
-const DAYS = 14;
+const DAYS = 14;              // grid cap; display trims to the last hour with data (~10 d Windy horizon)
+const TZ_OFFSET_MS = 3 * 3600e3; // GMT+3, fixed (Europe/Istanbul, no DST)
 
 const WINDY_KEY = "Y0U61mqQyXwnLUvsgZqigHZkJV7ArhpA";
 const WINDY_WIND_MODELS = [
@@ -276,9 +262,8 @@ const MS2KN = 1.94384;
 
 /* Source identity colors (same on both charts) */
 const SRC = {
-  om:       { name: "Open-Meteo", color: "#4da3ff" },
-  windy:    { name: "Windy",      color: "#ffa94d" },
-  poseidon: { name: "Poseidon",   color: "#33e0d0" },
+  windy:    { name: "Windy",    color: "#ffa94d" },
+  poseidon: { name: "Poseidon", color: "#33e0d0" },
 };
 /* Major-discrepancy thresholds between source medians */
 const DISC_WIND_KT = 6;
@@ -431,27 +416,13 @@ function poseidonCols(rows) {
 }
 
 async function fetchAll(lat, lon) {
-  const windURL = "https://api.open-meteo.com/v1/forecast"
-    + `?latitude=${lat}&longitude=${lon}`
-    + "&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m"
-    + `&forecast_days=${DAYS}&wind_speed_unit=kn&timezone=Europe%2FIstanbul`
-    + "&models=" + WIND_MODELS.map(m => m.id).join(",");
-  const waveURL = "https://marine-api.open-meteo.com/v1/marine"
-    + `?latitude=${lat}&longitude=${lon}`
-    + "&hourly=wave_height,wave_period,wave_direction"
-    + `&forecast_days=${DAYS}&timezone=Europe%2FIstanbul`
-    + "&models=" + WAVE_MODELS.map(m => m.id).join(",");
-
   const settled = await Promise.allSettled([
-    fetch(windURL).then(r => { if (!r.ok) throw new Error("wind HTTP " + r.status); return r.json(); }),
-    fetch(waveURL).then(r => { if (!r.ok) throw new Error("wave HTTP " + r.status); return r.json(); }),
     fetchPoseidon("METEO", lat, lon),
     fetchPoseidon("WAM", lat, lon),
     ...WINDY_WIND_MODELS.map(m => fetchWindy(lat, lon, m.id, ["wind", "windGust"])),
     ...WINDY_WAVE_MODELS.map(m => fetchWindy(lat, lon, m.id, ["waves"])),
   ]);
-  const [windRes, waveRes, posWindRes, posWaveRes, ...windyRes] = settled;
-  if (windRes.status === "rejected") throw new Error("Wind fetch failed: " + windRes.reason.message);
+  const [posWindRes, posWaveRes, ...windyRes] = settled;
 
   const windyWind = [], windyWave = [], windyErrors = [];
   WINDY_WIND_MODELS.forEach((m, i) => {
@@ -467,11 +438,13 @@ async function fetchAll(lat, lon) {
   const poseidonErrors = [];
   if (posWindRes.status === "rejected") poseidonErrors.push("METEO: " + posWindRes.reason.message);
   if (posWaveRes.status === "rejected") poseidonErrors.push("WAM: " + posWaveRes.reason.message);
+  const poseidonWind = posWindRes.status === "fulfilled" ? posWindRes.value : null;
+  if (!windyWind.length && !poseidonWind) {
+    throw new Error("no source reachable — Windy: " + (windyErrors.join("; ") || "?") + " | Poseidon: " + (poseidonErrors.join("; ") || "?"));
+  }
   return {
-    wind: windRes.value,
-    wave: waveRes.status === "fulfilled" ? waveRes.value : null,
     windyWind, windyWave, windyErrors,
-    poseidonWind: posWindRes.status === "fulfilled" ? posWindRes.value : null,
+    poseidonWind,
     poseidonWave: posWaveRes.status === "fulfilled" ? posWaveRes.value : null,
     poseidonErrors,
   };
@@ -607,14 +580,19 @@ function render(lat, lon, data) {
     waveGo: parseFloat($("thWaveGo").value) || 1.0,
     waveNo: parseFloat($("thWaveNo").value) || 1.5,
   };
-  const wh = data.wind.hourly;
-  const times = wh.time;
-  const offsetMs = (data.wind.utc_offset_seconds || 0) * 1000;
-  const epochs = times.map(t => Date.parse(t + "Z") - offsetMs); // hourly local times -> epoch ms UTC
+  // native hourly grid in GMT+3 from today 00:00, ending at the last hour any source covers
+  const startEpoch = Math.floor((Date.now() + TZ_OFFSET_MS) / 86400e3) * 86400e3 - TZ_OFFSET_MS;
+  let maxEpoch = startEpoch;
+  for (const w of (data.windyWind || []).concat(data.windyWave || [])) maxEpoch = Math.max(maxEpoch, w.data.ts[w.data.ts.length - 1]);
+  for (const rows of [data.poseidonWind, data.poseidonWave]) if (rows && rows.length) maxEpoch = Math.max(maxEpoch, Date.parse(rows[rows.length - 1].date));
+  const hours = Math.max(24, Math.min(DAYS * 24, Math.round((maxEpoch - startEpoch) / 3600e3) + 1));
+  const epochs = Array.from({ length: hours }, (_, i) => startEpoch + i * 3600e3);
+  const times = epochs.map(e => new Date(e + TZ_OFFSET_MS).toISOString().slice(0, 16)); // GMT+3 wall clock
+  const wh = { time: times };
 
-  // graft Windy members onto the Open-Meteo hourly grid
+  // graft Windy members onto the grid
   // (u/v smoothed BEFORE deriving speed/direction, so both stay consistent)
-  const windModelsAll = [...WIND_MODELS];
+  const windModelsAll = [];
   for (const { model, data: d } of (data.windyWind || [])) {
     const u = interpSeries(d.ts, smoothSeries(d["wind_u-surface"]), epochs);
     const v = interpSeries(d.ts, smoothSeries(d["wind_v-surface"]), epochs);
@@ -646,27 +624,22 @@ function render(lat, lon, data) {
 
   // per-source medians + major-discrepancy stripes
   const srcMedians = (h, varName, models) => times.map((_, i) => median(models.map(m => (h[varName + "_" + m.id] || [])[i])));
-  const omWindS = srcMedians(wh, "wind_speed_10m", WIND_MODELS);
   const wdWindS = windyWindModels.length ? srcMedians(wh, "wind_speed_10m", windyWindModels) : null;
   const psWindS = psWindOk ? wh["wind_speed_10m_poseidon"] : null;
   const stripesFor = (lists, thresh) => times.map((_, i) => {
     const v = lists.map(l => l ? l[i] : null).filter(x => x != null);
     return v.length >= 2 && (Math.max(...v) - Math.min(...v)) >= thresh;
   });
-  const windStripes = stripesFor([omWindS, wdWindS, psWindS], DISC_WIND_KT);
+  const windStripes = stripesFor([wdWindS, psWindS], DISC_WIND_KT);
 
   let waveC = null, perRows = null, waveDirRows = null, waveOk = false;
-  const waveModelsAll = [...WAVE_MODELS];
-  const vh = (data.wave && data.wave.hourly) ? data.wave.hourly : { time: times };
+  const waveModelsAll = [];
+  const vh = { time: times };
   for (const { model, data: d } of (data.windyWave || [])) {
     vh["wave_height_" + model.id] = smoothTri(interpSeries(d.ts, smoothSeries(d["waves_height-surface"]), epochs), 1);
     vh["wave_period_" + model.id] = interpSeries(d.ts, smoothSeries(d["waves_period-surface"]), epochs);
     vh["wave_direction_" + model.id] = interpSeries(d.ts, d["waves_direction-surface"], epochs); // direction not smoothed (360° wrap)
     waveModelsAll.push(model);
-  }
-  // lightly calm Open-Meteo wave heights too (±1 h triangular); Poseidon stays raw
-  for (const m of WAVE_MODELS) {
-    if (vh["wave_height_" + m.id]) vh["wave_height_" + m.id] = smoothTri(vh["wave_height_" + m.id], 1);
   }
   if (data.poseidonWave) {
     const p = poseidonCols(data.poseidonWave);
@@ -678,16 +651,15 @@ function render(lat, lon, data) {
       psWaveOk = true;
     }
   }
-  if (data.wave || (data.windyWave || []).length || psWaveOk) {
+  if ((data.windyWave || []).length || psWaveOk) {
     waveC = consensus(vh, "wave_height", waveModelsAll);
     perRows = times.map((_, i) => median(waveModelsAll.map(m => (vh["wave_period_" + m.id] || [])[i])));
     waveDirRows = times.map((_, i) => circularMean(waveModelsAll.map(m => (vh["wave_direction_" + m.id] || [])[i])));
     waveOk = waveC.some(r => r.med != null);
   }
-  const omWaveS = srcMedians(vh, "wave_height", WAVE_MODELS);
   const wdWaveS = windyWaveModels.length ? srcMedians(vh, "wave_height", windyWaveModels) : null;
   const psWaveS = psWaveOk ? vh["wave_height_poseidon"] : null;
-  const waveStripes = stripesFor([omWaveS, wdWaveS, psWaveS], DISC_WAVE_M);
+  const waveStripes = stripesFor([wdWaveS, psWaveS], DISC_WAVE_M);
 
   // conflict hours per day (wind or wave) for table flags
   const conflictByDay = new Map();
@@ -719,15 +691,14 @@ function render(lat, lon, data) {
 
   // ---- charts ----
   // Poseidon drawn last and thickest — the high-res Aegean model is the most trusted source
-  const srcSeries = (om, wd, ps) => [
-    { vals: om, color: SRC.om.color, width: 2 },
+  const srcSeries = (wd, ps) => [
     ...(wd ? [{ vals: wd, color: SRC.windy.color, width: 2 }] : []),
     ...(ps ? [{ vals: ps, color: SRC.poseidon.color, width: 3.5 }] : []),
   ];
   $("windChart").innerHTML = chart(windC, times, {
     yStep: 5, minYMax: 25,
     bandColor: "rgba(140,165,200,.16)",
-    series: [{ vals: gustC.map(r => r.med), color: "#8aa3c4", width: 1.2, dash: "3 3" }, ...srcSeries(omWindS, wdWindS, psWindS)],
+    series: [{ vals: gustC.map(r => r.med), color: "#8aa3c4", width: 1.2, dash: "3 3" }, ...srcSeries(wdWindS, psWindS)],
     stripes: windStripes,
     thresholds: [{ v: th.windGo, color: "#f5a623" }, { v: th.windNo, color: "#ff5c5c" }],
   });
@@ -735,7 +706,7 @@ function render(lat, lon, data) {
     ? chart(waveC, times, {
         yStep: 0.5, minYMax: 2,
         bandColor: "rgba(140,165,200,.16)",
-        series: srcSeries(omWaveS, wdWaveS, psWaveS),
+        series: srcSeries(wdWaveS, psWaveS),
         stripes: waveStripes,
         thresholds: [{ v: th.waveGo, color: "#f5a623" }, { v: th.waveNo, color: "#ff5c5c" }],
       })
@@ -781,15 +752,15 @@ async function run() {
   const st = $("status");
   st.className = "";
   if (!pos) { st.className = "error"; st.textContent = "Could not parse coordinates — use decimal degrees like 36.65, 26.35"; return; }
-  st.textContent = `Fetching ${WIND_MODELS.length} wind models + ${WAVE_MODELS.length} wave models for ${pos.lat}, ${pos.lon} …`;
+  st.textContent = `Fetching Windy + Poseidon forecasts for ${pos.lat}, ${pos.lon} …`;
   $("go").disabled = true;
   try {
     const data = await fetchAll(pos.lat, pos.lon);
     lastData = data; lastPos = pos;
     render(pos.lat, pos.lon, data);
-    const nW = WIND_MODELS.length + data.windyWind.length + (data.poseidonWind ? 1 : 0);
-    const nV = WAVE_MODELS.length + data.windyWave.length + (data.poseidonWave ? 1 : 0);
-    st.textContent = `Updated ${new Date().toLocaleTimeString()} — up to ${nW} wind + ${nV} wave models across ${1 + (data.windyWind.length || data.windyWave.length ? 1 : 0) + (data.poseidonWind || data.poseidonWave ? 1 : 0)} sources.`
+    const nW = data.windyWind.length + (data.poseidonWind ? 1 : 0);
+    const nV = data.windyWave.length + (data.poseidonWave ? 1 : 0);
+    st.textContent = `Updated ${new Date().toLocaleTimeString()} — ${nW} wind + ${nV} wave models (Windy + Poseidon).`
       + (data.windyErrors.length ? "  ⚠ Windy: " + data.windyErrors.join("; ") : "")
       + (data.poseidonErrors.length ? "  ⚠ Poseidon: " + data.poseidonErrors.join("; ") : "");
     saveRecent(pos);

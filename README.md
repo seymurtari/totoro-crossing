@@ -1,23 +1,25 @@
 # TOTORO Crossing ⛵
 
-14-day multi-source wind & wave consensus for Aegean crossings — a single self-contained HTML page.
+10-day wind & wave consensus for Aegean crossings — a single self-contained HTML page.
 
 **Live:** https://seymurtari.github.io/totoro-crossing/
 
 ## What it does
 
-Pick a point (paste coordinates, tap a preset, or use the Mapbox satellite picker showing the whole Aegean) and get a 14-day consensus report:
+Pick a point (paste coordinates, tap a preset, or use the inline Mapbox satellite picker showing the whole Aegean) and get a consensus report from two sources:
 
-- **Sources:** Open-Meteo (ECMWF, GFS, ICON, UKMO wind / WAM, GWAM, EWAM, MFWAM, GFSwave waves), Windy Point Forecast (GFS, ICON-EU / GFSwave, ICON-EU-wave), and Poseidon HCMR (high-res Aegean METEO/WAM, days 1–5, via CORS relay).
-- **Charts:** per-source median lines in distinct colors over an all-model min–max band; red stripes where sources disagree by ≥ 6 kt wind or ≥ 0.5 m wave.
-- **Daily table:** avg/max wind (kt), gusts, direction, wave height (m), period, model counts, agreement rating, and a GO / CARE / NO verdict with editable thresholds.
+- **Windy Point Forecast** (GFS + ICON-EU wind, GFSwave + ICON-EU-wave waves) — orange lines, lightly smoothed to damp model-run noise.
+- **Poseidon HCMR** (high-resolution Aegean METEO / WAM models, days 1–5) — thick cyan lines, shown raw; the most trusted source.
+- **Charts:** wave height first, then wind speed; per-source median lines over a model min–max band, with red stripes where the two sources disagree by ≥ 6 kt wind or ≥ 0.5 m wave.
+- **Daily table:** wave avg/max (m), period, wind avg/max (kt), gusts, direction, model counts, agreement rating, and a GO / CARE / NO verdict with editable thresholds.
+- All times **GMT+3** (Europe/Istanbul, no DST); both sources' UTC timestamps are converted onto one hourly grid.
 
 ## iPhone home screen
 
-Open the live URL in Safari → Share → **Add to Home Screen**. The wave icon and standalone display are preconfigured via `manifest.json` / apple-touch-icon.
+Open the live URL in Safari → Share → **Add to Home Screen**. The wave icon and standalone display are preconfigured.
 
 ## Notes
 
 - No build, no dependencies to install — everything is in `index.html` (Leaflet loads from CDN only when the map picker opens).
-- Model horizons differ (3–16 days); late days rest on fewer models and are marked accordingly. Beyond day 7 treat as tendency, not forecast.
-- Weather APIs are free tiers; the embedded Windy key is quota-limited — the page degrades gracefully to the remaining sources if any fail.
+- Horizons: Windy GFS ≈ 10 days, ICON-EU and Poseidon ≈ 5 days — beyond day 5 the forecast rests on Windy alone; treat late days as tendency.
+- The embedded Windy key is quota-limited and Poseidon rides a public CORS relay — the page degrades gracefully if either fails.
