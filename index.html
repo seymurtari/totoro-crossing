@@ -189,13 +189,14 @@
   <div id="greekPanel" class="panel hide">
     <div class="map-head">
       <h2>Greek institute forecast maps — NOA (meteo.gr) &amp; UoA (forecast.uoa.gr)</h2>
-      <span class="coords" id="greekTime">+0 h</span>
+      <span class="coords" id="greekTime">—</span>
       <button id="greekClose" class="x">Hide maps</button>
     </div>
-    <div class="row" style="margin-bottom:10px">
-      <label style="min-width:70px">Lead time</label>
+    <div class="row" style="margin-bottom:2px">
+      <label style="min-width:70px">Date &amp; time</label>
       <input type="range" id="greekSlider" min="0" max="40" step="1" value="0" style="flex:1;accent-color:var(--accent)">
     </div>
+    <div id="greekDays" style="display:flex;margin:0 0 10px 78px;font-size:11px;color:var(--dim)"></div>
     <div class="greek-grid">
       <figure><figcaption>NOA WAM — wave height</figcaption><img id="gNoaWave" alt="NOA wave map" loading="lazy"></figure>
       <figure><figcaption>UoA WAM — Aegean wave height</figcaption><img id="gUoaWave" alt="UoA Aegean wave map" loading="lazy"></figure>
@@ -900,18 +901,32 @@ function greekFrame(step) {
   $("gUoaWave").src = `https://forecast.uoa.gr/maps/0day/WAM/AEG/MWH/${hhh}.MWH.png`;
   $("gNoaWind").src = `https://stratus.meteo.noa.gr/forecast/BOLAM2020/f_wind10_f_${h}.png`;
   $("gUoaWind").src = `https://forecast.uoa.gr/maps/0day/SKIRON/GRID1/wind10m/${h < 6 ? "006" : hhh}.wind10m.png`;
-  $("greekTime").textContent = `+${h} h`;
+  // frames count from today's 00:00 UTC model run -> show real date/time in GMT+3
+  const now = new Date();
+  const runBase = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const t = new Date(runBase + h * 3600e3 + TZ_OFFSET_MS);
+  const WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], MO = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  $("greekTime").textContent = `${WD[t.getUTCDay()]} ${t.getUTCDate()} ${MO[t.getUTCMonth()]} ${String(t.getUTCHours()).padStart(2, "0")}:00 (+${h} h)`;
 }
 ["gNoaWave", "gUoaWave", "gNoaWind", "gUoaWind"].forEach(id => {
   $(id).addEventListener("error", () => { $(id).style.opacity = ".15"; });
   $(id).addEventListener("load", () => { $(id).style.opacity = "1"; });
 });
+function buildGreekDayScale() {
+  const now = new Date();
+  const runBase = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  $("greekDays").innerHTML = Array.from({ length: 5 }, (_, i) => {
+    const d = new Date(runBase + i * 86400e3 + 12 * 3600e3 + TZ_OFFSET_MS);
+    return `<span style="flex:1;text-align:center;border-left:1px solid var(--line)">${WD[d.getUTCDay()]} ${d.getUTCDate()}</span>`;
+  }).join("");
+}
 let greekInit = false;
 $("greekBtn").onclick = () => {
   const p = $("greekPanel");
   if (!p.classList.contains("hide")) { p.classList.add("hide"); return; }
   p.classList.remove("hide");
-  if (!greekInit) { greekInit = true; greekFrame(0); }
+  if (!greekInit) { greekInit = true; buildGreekDayScale(); greekFrame(0); }
 };
 $("greekClose").onclick = () => $("greekPanel").classList.add("hide");
 $("greekSlider").addEventListener("input", e => greekFrame(+e.target.value));
