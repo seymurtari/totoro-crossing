@@ -434,18 +434,47 @@ function interpSeries(ts, vals, epochs) {
 
 /* ---------- fetching ---------- */
 
+/* Windy responses are cached in localStorage for 3 h (model runs update ~6-hourly),
+   so repeat loads of the same point cost zero API quota. If a live call fails
+   (e.g. daily quota hit), any cached copy — even an old one — beats nothing. */
+const WINDY_CACHE_TTL = 3 * 3600e3;
+let windyServedStale = false;
+
+function pruneWindyCache() {
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith("windy_")) continue;
+      const v = JSON.parse(localStorage.getItem(k));
+      if (!v || Date.now() - v.t > 48 * 3600e3) localStorage.removeItem(k);
+    }
+  } catch (e) { /* private mode / quota */ }
+}
+
 async function fetchWindy(lat, lon, model, parameters) {
-  const r = await fetch("https://api.windy.com/api/point-forecast/v2", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ lat, lon, model, parameters, levels: ["surface"], key: WINDY_KEY }),
-  });
-  if (!r.ok) {
-    let msg = "HTTP " + r.status;
-    try { msg += " " + ((await r.json()).message || ""); } catch (e) {}
-    throw new Error(msg);
+  const key = `windy_${model}_${lat.toFixed(2)}_${lon.toFixed(2)}`;
+  let cached = null;
+  try { cached = JSON.parse(localStorage.getItem(key)); } catch (e) {}
+  if (cached && Date.now() - cached.t < WINDY_CACHE_TTL) return cached.data;
+
+  try {
+    const r = await fetch("https://api.windy.com/api/point-forecast/v2", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lat, lon, model, parameters, levels: ["surface"], key: WINDY_KEY }),
+    });
+    if (!r.ok) {
+      let msg = "HTTP " + r.status;
+      try { msg += " " + ((await r.json()).message || ""); } catch (e) {}
+      throw new Error(msg);
+    }
+    const j = await r.json();
+    try { pruneWindyCache(); localStorage.setItem(key, JSON.stringify({ t: Date.now(), data: j })); } catch (e) {}
+    return j;
+  } catch (e) {
+    if (cached) { windyServedStale = true; return cached.data; } // stale fallback
+    throw e;
   }
-  return r.json();
 }
 
 async function fetchPoseidon(model, lat, lon) {
@@ -814,6 +843,7 @@ async function run() {
   st.className = "";
   if (!pos) { st.className = "error"; st.textContent = "Could not parse coordinates — use decimal degrees like 36.65, 26.35"; return; }
   st.textContent = `Fetching Windy + Poseidon forecasts for ${pos.lat}, ${pos.lon} …`;
+  windyServedStale = false;
   $("go").disabled = true;
   try {
     const data = await fetchAll(pos.lat, pos.lon);
@@ -822,6 +852,7 @@ async function run() {
     const nW = data.windyWind.length + (data.poseidonWind ? 1 : 0);
     const nV = data.windyWave.length + (data.poseidonWave ? 1 : 0);
     st.textContent = `Updated ${new Date().toLocaleTimeString()} — ${nW} wind + ${nV} wave models (Windy + Poseidon).`
+      + (windyServedStale ? "  ⚠ Windy shown from cache (live API unavailable — data may be an older run)" : "")
       + (data.windyErrors.length ? "  ⚠ Windy: " + data.windyErrors.join("; ") : "")
       + (data.poseidonErrors.length ? "  ⚠ Poseidon: " + data.poseidonErrors.join("; ") : "");
     saveRecent(pos);
