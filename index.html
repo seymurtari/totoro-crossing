@@ -185,6 +185,18 @@
     </div>
 
     <div class="panel">
+      <h2>Wave height — by source (meters)</h2>
+      <div class="legend">
+        <span class="sw" style="background:#4da3ff"></span>Open-Meteo
+        <span class="sw" style="background:#ffa94d"></span>Windy
+        <span class="sw" style="background:#33e0d0"></span>Poseidon
+        <span class="sw" style="background:rgba(140,165,200,.35)"></span>all-model min–max
+        <span class="sw" style="background:rgba(255,92,92,.35)"></span>⚠ sources diverge ≥ 0.5 m
+      </div>
+      <div id="waveChart"></div>
+    </div>
+
+    <div class="panel">
       <h2>Wind speed — by source (knots)</h2>
       <div class="legend">
         <span class="sw" style="background:#4da3ff"></span>Open-Meteo
@@ -198,32 +210,20 @@
     </div>
 
     <div class="panel">
-      <h2>Wave height — by source (meters)</h2>
-      <div class="legend">
-        <span class="sw" style="background:#4da3ff"></span>Open-Meteo
-        <span class="sw" style="background:#ffa94d"></span>Windy
-        <span class="sw" style="background:#33e0d0"></span>Poseidon
-        <span class="sw" style="background:rgba(140,165,200,.35)"></span>all-model min–max
-        <span class="sw" style="background:rgba(255,92,92,.35)"></span>⚠ sources diverge ≥ 0.5 m
-      </div>
-      <div id="waveChart"></div>
-    </div>
-
-    <div class="panel">
       <h2>Daily crossing report</h2>
       <div class="tablewrap">
       <table id="daily">
         <thead>
           <tr>
             <th>Day</th>
+            <th>Wave avg m</th>
+            <th>Wave max m</th>
+            <th>Period s</th>
             <th>Wind avg kt</th>
             <th>Wind max kt</th>
             <th>Gust max kt</th>
             <th>Wind dir</th>
-            <th>Wave avg m</th>
-            <th>Wave max m</th>
-            <th>Period s</th>
-            <th>Models W/S</th>
+            <th>Models wave/wind</th>
             <th>Agreement</th>
             <th>Verdict</th>
           </tr>
@@ -233,7 +233,7 @@
       </div>
       <div class="foot" id="crosscheck"></div>
       <div class="foot">
-        Each colored line is one source's own median (Open-Meteo = 4–5 models, Windy = 2 models, Poseidon = 1 high-res Aegean model, days 1–5 only). Red stripes + ⚠ mark hours where the sources themselves disagree by ≥ 6 kt wind or ≥ 0.5 m wave — the days to re-check before committing. Grey band = min–max across all models; table numbers = all-model consensus (median). Model horizons differ (3–16 d) so late days rest on fewer models. Agreement = band width vs median (tight ≤ 25 %, fair ≤ 50 %, poor beyond). Beyond day 7 treat everything as tendency, not forecast.
+        Each colored line is one source's own median (Open-Meteo = 4–5 models, Windy = 2 models, Poseidon = 1 high-res Aegean model, days 1–5 only). Windy series are lightly smoothed (centered ±3 h weighted average) to damp step-to-step run noise. Red stripes + ⚠ mark hours where the sources themselves disagree by ≥ 6 kt wind or ≥ 0.5 m wave — the days to re-check before committing. Grey band = min–max across all models; table numbers = all-model consensus (median). Model horizons differ (3–16 d) so late days rest on fewer models. Agreement = band width vs median (tight ≤ 25 %, fair ≤ 50 %, poor beyond). Beyond day 7 treat everything as tendency, not forecast.
         Data: <a href="https://open-meteo.com/" target="_blank">Open-Meteo</a> (free, non-commercial) + <a href="https://api.windy.com/" target="_blank">Windy Point Forecast API</a> (personal key embedded in this file; quota-limited) + <a href="https://poseidon.hcmr.gr/" target="_blank">Poseidon HCMR</a> (via public CORS relay, so it can occasionally be slow or unavailable — the page then continues without it; wave grid masked very close to shore). All times local to the point.
       </div>
     </div>
@@ -342,6 +342,18 @@ function consensus(hourly, varName, models) {
     rows.push({ med: median(vals), lo: minOf(vals), hi: maxOf(vals), n: vals.length });
   }
   return rows;
+}
+
+/* Centered weighted smoothing (1/4, 1/2, 1/4) over adjacent steps — damps
+   the step-to-step run noise in Windy's raw 3-hourly series */
+function smoothSeries(vals) {
+  if (!vals || vals.length < 3) return vals;
+  return vals.map((v, i) => {
+    const a = vals[i - 1], b = vals[i + 1];
+    if (v == null) return null;
+    if (a == null || b == null) return v; // keep ends and gap edges as-is
+    return 0.25 * a + 0.5 * v + 0.25 * b;
+  });
 }
 
 /* Linear interpolation of a Windy 3-hourly series onto epoch-ms targets */
@@ -584,11 +596,12 @@ function render(lat, lon, data) {
   const epochs = times.map(t => Date.parse(t + "Z") - offsetMs); // hourly local times -> epoch ms UTC
 
   // graft Windy members onto the Open-Meteo hourly grid
+  // (u/v smoothed BEFORE deriving speed/direction, so both stay consistent)
   const windModelsAll = [...WIND_MODELS];
   for (const { model, data: d } of (data.windyWind || [])) {
-    const u = interpSeries(d.ts, d["wind_u-surface"], epochs);
-    const v = interpSeries(d.ts, d["wind_v-surface"], epochs);
-    const g = interpSeries(d.ts, d["gust-surface"], epochs);
+    const u = interpSeries(d.ts, smoothSeries(d["wind_u-surface"]), epochs);
+    const v = interpSeries(d.ts, smoothSeries(d["wind_v-surface"]), epochs);
+    const g = interpSeries(d.ts, smoothSeries(d["gust-surface"]), epochs);
     wh["wind_speed_10m_" + model.id] = u.map((uu, i) => (uu == null || v[i] == null) ? null : Math.hypot(uu, v[i]) * MS2KN);
     wh["wind_gusts_10m_" + model.id] = g.map(x => x == null ? null : x * MS2KN);
     wh["wind_direction_10m_" + model.id] = u.map((uu, i) => (uu == null || v[i] == null) ? null : (Math.atan2(-uu, -v[i]) * 180 / Math.PI + 360) % 360);
@@ -629,9 +642,9 @@ function render(lat, lon, data) {
   const waveModelsAll = [...WAVE_MODELS];
   const vh = (data.wave && data.wave.hourly) ? data.wave.hourly : { time: times };
   for (const { model, data: d } of (data.windyWave || [])) {
-    vh["wave_height_" + model.id] = interpSeries(d.ts, d["waves_height-surface"], epochs);
-    vh["wave_period_" + model.id] = interpSeries(d.ts, d["waves_period-surface"], epochs);
-    vh["wave_direction_" + model.id] = interpSeries(d.ts, d["waves_direction-surface"], epochs);
+    vh["wave_height_" + model.id] = interpSeries(d.ts, smoothSeries(d["waves_height-surface"]), epochs);
+    vh["wave_period_" + model.id] = interpSeries(d.ts, smoothSeries(d["waves_period-surface"]), epochs);
+    vh["wave_direction_" + model.id] = interpSeries(d.ts, d["waves_direction-surface"], epochs); // direction not smoothed (360° wrap)
     waveModelsAll.push(model);
   }
   if (data.poseidonWave) {
@@ -678,9 +691,9 @@ function render(lat, lon, data) {
   $("summary").innerHTML = `
     <div class="stat"><div class="k">Green (GO) days</div><div class="v" style="color:var(--green)">${goDays.length} / ${days.length}</div></div>
     <div class="stat"><div class="k">Best windows</div><div class="v" style="font-size:15px">${goLabel}</div></div>
-    <div class="stat"><div class="k">Peak wind (consensus)</div><div class="v">${fmt(peakWind, 0)} kt</div></div>
     <div class="stat"><div class="k">Peak wave (consensus)</div><div class="v">${waveOk ? fmt(peakWave) + " m" : "no wave data here"}</div></div>
-    <div class="stat"><div class="k">Models wind / wave</div><div class="v">${Math.max(...days.map(d => d.nWind))} / ${waveOk ? Math.max(...days.map(d => d.nWave)) : 0}</div></div>
+    <div class="stat"><div class="k">Peak wind (consensus)</div><div class="v">${fmt(peakWind, 0)} kt</div></div>
+    <div class="stat"><div class="k">Models wave / wind</div><div class="v">${waveOk ? Math.max(...days.map(d => d.nWave)) : 0} / ${Math.max(...days.map(d => d.nWind))}</div></div>
     <div class="stat"><div class="k">Source conflicts ⚠</div><div class="v" style="color:${[...conflictByDay.values()].filter(c => c >= DISC_HOURS_FLAG).length ? "var(--red)" : "var(--green)"}">${[...conflictByDay.values()].filter(c => c >= DISC_HOURS_FLAG).length} days</div></div>`;
 
   // ---- charts ----
@@ -716,14 +729,14 @@ function render(lat, lon, data) {
     if (d.nWind <= 1 && d.nWave <= 1) tr.className = "rowdim";
     tr.innerHTML = `
       <td class="day">${d.date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}</td>
+      <td>${fmt(d.waveAvg)}</td>
+      <td><b>${fmt(d.waveMax)}</b> <span class="band">${d.waveMaxLo != null ? `(${fmt(d.waveMaxLo)}–${fmt(d.waveMaxHi)})` : ""}</span></td>
+      <td>${fmt(d.period)}</td>
       <td>${fmt(d.windAvg, 0)}</td>
       <td><b>${fmt(d.windMax, 0)}</b> <span class="band">${d.windMaxLo != null ? `(${fmt(d.windMaxLo, 0)}–${fmt(d.windMaxHi, 0)})` : ""}</span></td>
       <td>${fmt(d.gustMax, 0)}</td>
       <td>${dirLabel(d.dir)}</td>
-      <td>${fmt(d.waveAvg)}</td>
-      <td><b>${fmt(d.waveMax)}</b> <span class="band">${d.waveMaxLo != null ? `(${fmt(d.waveMaxLo)}–${fmt(d.waveMaxHi)})` : ""}</span></td>
-      <td>${fmt(d.period)}</td>
-      <td>${d.nWind}/${d.nWave}</td>
+      <td>${d.nWave}/${d.nWind}</td>
       <td style="color:${agColor}">${agLabel}</td>
       <td>${vd ? `<span class="verdict v-${vd}">${vd === "go" ? "GO" : vd === "care" ? "CARE" : "NO"}</span>` : "—"}${(conflictByDay.get(d.key) || 0) >= DISC_HOURS_FLAG ? ` <span title="Sources disagree materially for ${conflictByDay.get(d.key)} h this day — re-check closer to departure" style="cursor:help">⚠</span>` : ""}</td>`;
     tb.appendChild(tr);
