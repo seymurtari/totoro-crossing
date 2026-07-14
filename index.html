@@ -134,6 +134,7 @@
     background: rgba(3, 9, 18, .78);
     display: flex; align-items: center; justify-content: center;
   }
+  .modal.hide { display: none; } /* .modal comes after .hide, so re-assert hiding explicitly */
   .modal-box {
     width: min(940px, 95vw); height: min(640px, 90vh);
     background: var(--card); border: 1px solid var(--line); border-radius: 14px;
@@ -159,7 +160,7 @@
   <div class="panel">
     <div class="row">
       <label for="coords">Point of interest</label>
-      <input type="text" id="coords" placeholder="lat, lon  e.g. 36.65, 26.35" value="">
+      <input type="text" id="coords" placeholder="lat, lon  e.g. 36.65, 26.35" value="37.87, 26.6">
       <button id="go">Get consensus</button>
       <button id="mapBtn" style="background:var(--card2);color:var(--accent);border:1px solid var(--accent)">Mapbox 🗺</button>
       <span id="presets"></span>
@@ -875,6 +876,7 @@ $("coords").addEventListener("keydown", e => { if (e.key === "Enter") run(); });
 ["thWindGo", "thWindNo", "thWaveGo", "thWaveNo"].forEach(id =>
   $(id).addEventListener("change", () => { if (lastData && lastPos) render(lastPos.lat, lastPos.lon, lastData); }));
 drawPresets();
+if (parseCoords($("coords").value)) run(); // auto-load the default point on open
 </script>
 </body>
 </html>
