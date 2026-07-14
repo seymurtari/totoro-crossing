@@ -152,6 +152,8 @@
   .greek-grid figure { margin: 0; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px; }
   .greek-grid figcaption { font-size: 12.5px; color: var(--dim); margin-bottom: 6px; }
   .greek-grid img { width: 100%; height: auto; border-radius: 6px; display: block; }
+  .greek-grid .crop { position: relative; overflow: hidden; border-radius: 6px; }
+  .greek-grid .crop img { position: absolute; max-width: none; border-radius: 0; }
 </style>
 </head>
 <body>
@@ -198,12 +200,16 @@
     </div>
     <div id="greekDays" style="display:flex;margin:0 0 10px 78px;font-size:11px;color:var(--dim)"></div>
     <div class="greek-grid">
-      <figure><figcaption>NOA WAM — wave height</figcaption><img id="gNoaWave" alt="NOA wave map" loading="lazy"></figure>
-      <figure><figcaption>UoA WAM — Aegean wave height</figcaption><img id="gUoaWave" alt="UoA Aegean wave map" loading="lazy"></figure>
-      <figure><figcaption>NOA BOLAM — 10 m wind</figcaption><img id="gNoaWind" alt="NOA wind map" loading="lazy"></figure>
-      <figure><figcaption>UoA SKIRON — 10 m wind (Med)</figcaption><img id="gUoaWind" alt="UoA SKIRON wind map" loading="lazy"></figure>
+      <figure><figcaption>NOA WAM — wave height (Aegean view)</figcaption>
+        <div class="crop" style="aspect-ratio:1.576"><img id="gNoaWave" alt="NOA wave map" style="width:268%;left:-101.9%;top:-120.6%"></div></figure>
+      <figure><figcaption>UoA WAM — Aegean wave height</figcaption>
+        <div class="crop" style="aspect-ratio:2.023"><img id="gUoaWave" alt="UoA Aegean wave map" style="width:166.9%;left:-33.8%;top:-133.5%"></div></figure>
+      <figure><figcaption>NOA BOLAM — 10 m wind, South Aegean</figcaption>
+        <img id="gNoaWind" alt="NOA South Aegean wind map"></figure>
+      <figure><figcaption>UoA WRF Greece — 10 m wind (≈2-day range)</figcaption>
+        <div class="crop" style="aspect-ratio:1.731"><img id="gUoaWind" alt="UoA WRF wind map" style="width:176.1%;left:-60.6%;top:-138.9%"></div></figure>
     </div>
-    <div class="foot">These are the institutes' own rendered maps (hotlinked live, ~5-day range, 3-hourly steps; the timestamp printed on each map is authoritative and in UTC). Neither institute publishes machine-readable point data, so these serve as a visual cross-check beside the Windy/Poseidon consensus rather than joining the lines. Credits: <a href="https://www.meteo.gr/meteomaps/" target="_blank">NOA meteo.gr</a> · <a href="https://forecast.uoa.gr/en/forecast-maps/wave/aegean-sea" target="_blank">UoA forecast.uoa.gr</a>.</div>
+    <div class="foot">Views are windowed to the Hydra–Symi Aegean box (≈ 23°–28.2° E, 36°–38.4° N); the NOA wind pane is their native South Aegean product. Maps are the institutes' own rendered frames, hotlinked live (3-hourly; NOA/UoA waves ≈ 5 days, UoA WRF wind ≈ 2 days — frames past a model's horizon fade out). The timestamp printed on each map is authoritative (UTC). Neither institute publishes machine-readable point data, so these are a visual cross-check beside the Windy/Poseidon consensus. Credits: <a href="https://www.meteo.gr/meteomaps/" target="_blank">NOA meteo.gr</a> · <a href="https://forecast.uoa.gr/en/forecast-maps/wave/aegean-sea" target="_blank">UoA forecast.uoa.gr</a>.</div>
   </div>
 
   <div id="report" class="hide">
@@ -894,13 +900,25 @@ async function openMapPicker() {
 
 /* ---------- Greek institute maps (NOA + UoA, image frames, 3-hourly) ---------- */
 
+const greekWatch = {};
+function setMapSrc(id, url) {
+  const el = $(id);
+  el.src = url;
+  clearTimeout(greekWatch[id]);
+  greekWatch[id] = setTimeout(() => { // stalled request watchdog -> one cache-busted reload
+    if (!(el.complete && el.naturalWidth > 0) && !el.dataset.retried) {
+      el.dataset.retried = "1";
+      el.src = url + "?r=" + Date.now();
+    }
+  }, 6000);
+}
 function greekFrame(step) {
   const h = step * 3;
   const hhh = String(h).padStart(3, "0");
-  $("gNoaWave").src = `https://stratus.meteo.noa.gr/forecast/WAMNEW/wavehgt_GR_${step}.png`;
-  $("gUoaWave").src = `https://forecast.uoa.gr/maps/0day/WAM/AEG/MWH/${hhh}.MWH.png`;
-  $("gNoaWind").src = `https://stratus.meteo.noa.gr/forecast/BOLAM2020/f_wind10_f_${h}.png`;
-  $("gUoaWind").src = `https://forecast.uoa.gr/maps/0day/SKIRON/GRID1/wind10m/${h < 6 ? "006" : hhh}.wind10m.png`;
+  setMapSrc("gNoaWave", `https://stratus.meteo.noa.gr/forecast/WAMNEW/wavehgt_GR_${step}.png`);
+  setMapSrc("gUoaWave", `https://forecast.uoa.gr/maps/0day/WAM/AEG/MWH/${hhh}.MWH.png`);
+  setMapSrc("gNoaWind", `https://stratus.meteo.noa.gr/forecast/BOLAM2020/f_wind10_sa_${h}.png`); // native South Aegean zoom
+  setMapSrc("gUoaWind", `https://forecast.uoa.gr/maps/0day/WRF/GRID1/wind10m/${hhh}.wind10m.png`); // Greece WRF, ~66 h
   // frames count from today's 00:00 UTC model run -> show real date/time in GMT+3
   const now = new Date();
   const runBase = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
@@ -909,8 +927,14 @@ function greekFrame(step) {
   $("greekTime").textContent = `${WD[t.getUTCDay()]} ${t.getUTCDate()} ${MO[t.getUTCMonth()]} ${String(t.getUTCHours()).padStart(2, "0")}:00 (+${h} h)`;
 }
 ["gNoaWave", "gUoaWave", "gNoaWind", "gUoaWind"].forEach(id => {
-  $(id).addEventListener("error", () => { $(id).style.opacity = ".15"; });
-  $(id).addEventListener("load", () => { $(id).style.opacity = "1"; });
+  const el = $(id);
+  el.addEventListener("error", () => {
+    if (!el.dataset.retried) { // one retry with cache-bust (CDN hiccups cache as broken)
+      el.dataset.retried = "1";
+      el.src = el.src.split("?")[0] + "?r=" + Date.now();
+    } else el.style.opacity = ".15";
+  });
+  el.addEventListener("load", () => { el.style.opacity = "1"; delete el.dataset.retried; });
 });
 function buildGreekDayScale() {
   const now = new Date();
