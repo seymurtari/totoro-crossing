@@ -233,7 +233,7 @@
       </div>
       <div class="foot" id="crosscheck"></div>
       <div class="foot">
-        Each colored line is one source's own median (Open-Meteo = 4–5 models, Windy = 2 models, Poseidon = 1 high-res Aegean model, days 1–5 only). Windy series are lightly smoothed (centered ±3 h weighted average) to damp step-to-step run noise. Red stripes + ⚠ mark hours where the sources themselves disagree by ≥ 6 kt wind or ≥ 0.5 m wave — the days to re-check before committing. Grey band = min–max across all models; table numbers = all-model consensus (median). Model horizons differ (3–16 d) so late days rest on fewer models. Agreement = band width vs median (tight ≤ 25 %, fair ≤ 50 %, poor beyond). Beyond day 7 treat everything as tendency, not forecast.
+        Each colored line is one source's own median (Open-Meteo = 4–5 models, Windy = 2 models, Poseidon = 1 high-res Aegean model, days 1–5 only). Windy series are lightly smoothed (centered ±3 h weighted average) to damp step-to-step run noise, and Windy + Open-Meteo wave heights get an extra ±3 h rolling average; Poseidon is shown raw. Red stripes + ⚠ mark hours where the sources themselves disagree by ≥ 6 kt wind or ≥ 0.5 m wave — the days to re-check before committing. Grey band = min–max across all models; table numbers = all-model consensus (median). Model horizons differ (3–16 d) so late days rest on fewer models. Agreement = band width vs median (tight ≤ 25 %, fair ≤ 50 %, poor beyond). Beyond day 7 treat everything as tendency, not forecast.
         Data: <a href="https://open-meteo.com/" target="_blank">Open-Meteo</a> (free, non-commercial) + <a href="https://api.windy.com/" target="_blank">Windy Point Forecast API</a> (personal key embedded in this file; quota-limited) + <a href="https://poseidon.hcmr.gr/" target="_blank">Poseidon HCMR</a> (via public CORS relay, so it can occasionally be slow or unavailable — the page then continues without it; wave grid masked very close to shore). All times GMT+3 (Europe/Istanbul, no DST): the Open-Meteo grid is requested in that zone, and Windy's and Poseidon's UTC timestamps are converted onto it, so every chart hour and table day means the same wall-clock moment across all three sources.
       </div>
     </div>
@@ -353,6 +353,23 @@ function smoothSeries(vals) {
     if (v == null) return null;
     if (a == null || b == null) return v; // keep ends and gap edges as-is
     return 0.25 * a + 0.5 * v + 0.25 * b;
+  });
+}
+
+/* Triangular-weighted rolling mean over ±hw steps on an hourly series
+   (nulls ignored; null centers stay null) — used to further calm wave height */
+function smoothTri(vals, hw) {
+  if (!vals || vals.length < 3) return vals;
+  return vals.map((v, i) => {
+    if (v == null) return null;
+    let s = 0, w = 0;
+    for (let k = -hw; k <= hw; k++) {
+      const x = vals[i + k];
+      if (x == null) continue;
+      const wt = hw + 1 - Math.abs(k);
+      s += x * wt; w += wt;
+    }
+    return w ? s / w : null;
   });
 }
 
@@ -642,10 +659,14 @@ function render(lat, lon, data) {
   const waveModelsAll = [...WAVE_MODELS];
   const vh = (data.wave && data.wave.hourly) ? data.wave.hourly : { time: times };
   for (const { model, data: d } of (data.windyWave || [])) {
-    vh["wave_height_" + model.id] = interpSeries(d.ts, smoothSeries(d["waves_height-surface"]), epochs);
+    vh["wave_height_" + model.id] = smoothTri(interpSeries(d.ts, smoothSeries(d["waves_height-surface"]), epochs), 3);
     vh["wave_period_" + model.id] = interpSeries(d.ts, smoothSeries(d["waves_period-surface"]), epochs);
     vh["wave_direction_" + model.id] = interpSeries(d.ts, d["waves_direction-surface"], epochs); // direction not smoothed (360° wrap)
     waveModelsAll.push(model);
+  }
+  // further calm Open-Meteo wave heights too (±3 h triangular); Poseidon stays raw
+  for (const m of WAVE_MODELS) {
+    if (vh["wave_height_" + m.id]) vh["wave_height_" + m.id] = smoothTri(vh["wave_height_" + m.id], 3);
   }
   if (data.poseidonWave) {
     const p = poseidonCols(data.poseidonWave);
