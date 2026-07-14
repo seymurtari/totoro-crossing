@@ -152,6 +152,10 @@
   @media (max-width: 700px) { .greek-grid { grid-template-columns: 1fr; } }
   .greek-grid h3 { grid-column: 1 / -1; font-size: 14px; color: var(--accent); margin: 6px 0 0; }
   .pmini { width: 100%; aspect-ratio: 1.7; border-radius: 6px; background: var(--bg); }
+  .pscale { width: 100%; margin-top: 6px; border-radius: 4px; display: block; }
+  .maprow { display: flex; gap: 6px; align-items: center; }
+  .maprow .crop.mapmain { flex: 1; }
+  .crop.bar { width: 44px; flex: none; }
   .greek-grid figure { margin: 0; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px; }
   .greek-grid figcaption { font-size: 12.5px; color: var(--dim); margin-bottom: 6px; }
   .greek-grid img { width: 100%; height: auto; border-radius: 6px; display: block; }
@@ -204,19 +208,28 @@
     <div id="greekDays" style="display:flex;margin:0 0 10px 78px;font-size:11px;color:var(--dim)"></div>
     <div class="greek-grid">
       <h3>Wave height</h3>
-      <figure><figcaption>Poseidon WAM — live overlay (colour scale as on poseidon.hcmr.gr)</figcaption>
-        <div id="pWaveMap" class="pmini"></div></figure>
-      <figure><figcaption>NOA WAM — wave height (Aegean view)</figcaption>
-        <div class="crop" style="aspect-ratio:1.576"><img id="gNoaWave" alt="NOA wave map" style="width:268%;left:-101.9%;top:-120.6%"></div></figure>
-      <figure><figcaption>UoA WAM — Aegean wave height</figcaption>
-        <div class="crop" style="aspect-ratio:2.023"><img id="gUoaWave" alt="UoA Aegean wave map" style="width:166.9%;left:-33.8%;top:-133.5%"></div></figure>
+      <figure><figcaption>Poseidon WAM — live overlay (wave height, m)</figcaption>
+        <div id="pWaveMap" class="pmini"></div>
+        <img class="pscale" src="https://poseidon.hcmr.gr/poseidon-map/scales/wht_0.png" alt="wave height scale, m"></figure>
+      <figure><figcaption>NOA WAM — wave height, m (Aegean view)</figcaption>
+        <div class="maprow">
+          <div class="crop mapmain" style="aspect-ratio:1.576"><img id="gNoaWave" alt="NOA wave map" style="width:268%;left:-101.9%;top:-120.6%"></div>
+          <div class="crop bar" style="aspect-ratio:0.123"><img id="barNoaWave" alt="scale" style="width:1203%;left:-1103%;top:-4%"></div>
+        </div></figure>
+      <figure><figcaption>UoA WAM — Aegean max expected wave height, m</figcaption>
+        <div class="maprow">
+          <div class="crop mapmain" style="aspect-ratio:2.023"><img id="gUoaWave" alt="UoA Aegean wave map" style="width:166.9%;left:-33.8%;top:-133.5%"></div>
+          <div class="crop bar" style="aspect-ratio:0.129"><img id="barUoaWave" alt="scale" style="width:909%;left:-809%;top:-8.8%"></div>
+        </div></figure>
       <h3>Wind (10 m)</h3>
-      <figure><figcaption>Poseidon METEO — live overlay (colour scale as on poseidon.hcmr.gr)</figcaption>
-        <div id="pWindMap" class="pmini"></div></figure>
-      <figure><figcaption>NOA BOLAM — 10 m wind, South Aegean</figcaption>
+      <figure><figcaption>Poseidon METEO — live overlay (wind, Beaufort)</figcaption>
+        <div id="pWindMap" class="pmini"></div>
+        <img class="pscale" src="https://poseidon.hcmr.gr/poseidon-map/scales/w10_0.png" alt="wind scale, Beaufort"></figure>
+      <figure><figcaption>NOA BOLAM — 10 m wind, South Aegean (Beaufort, scale on map)</figcaption>
         <img id="gNoaWind" alt="NOA South Aegean wind map"></figure>
-      <figure><figcaption>UoA WRF Greece — 10 m wind (≈2-day range)</figcaption>
-        <div class="crop" style="aspect-ratio:1.731"><img id="gUoaWind" alt="UoA WRF wind map" style="width:176.1%;left:-60.6%;top:-138.9%"></div></figure>
+      <figure><figcaption>UoA WRF Greece — 10 m wind, m/s (≈2-day range)</figcaption>
+        <div class="crop" style="aspect-ratio:1.731"><img id="gUoaWind" alt="UoA WRF wind map" style="width:176.1%;left:-60.6%;top:-138.9%"></div>
+        <div class="crop" style="aspect-ratio:7.43;margin-top:6px"><img id="barUoaWind" alt="scale" style="width:116.8%;left:-13.1%;top:-871.7%"></div></figure>
     </div>
     <div class="foot">Views are windowed to the Hydra–Symi Aegean box (≈ 23°–28.2° E, 36°–38.4° N); the NOA wind pane is their native South Aegean product. The Poseidon panes drape the same live forecast layers as poseidon.hcmr.gr (WAM waves / METEO wind, today's 00Z run, falling back to yesterday's if not yet published) over a Mapbox base. Maps are the institutes' own rendered frames, hotlinked live (3-hourly; NOA/UoA waves ≈ 5 days, UoA WRF wind ≈ 2 days — frames past a model's horizon fade out). The timestamp printed on each map is authoritative (UTC). Neither institute publishes machine-readable point data, so these are a visual cross-check beside the Windy/Poseidon consensus. Credits: <a href="https://www.meteo.gr/meteomaps/" target="_blank">NOA meteo.gr</a> · <a href="https://forecast.uoa.gr/en/forecast-maps/wave/aegean-sea" target="_blank">UoA forecast.uoa.gr</a>.</div>
   </div>
@@ -1000,6 +1013,10 @@ $("greekBtn").onclick = async () => {
   if (!greekInit) {
     greekInit = true;
     buildGreekDayScale();
+    // colourbars are identical on every frame -> crop them once from frame 0
+    $("barNoaWave").src = "https://stratus.meteo.noa.gr/forecast/WAMNEW/wavehgt_GR_0.png";
+    $("barUoaWave").src = "https://forecast.uoa.gr/maps/0day/WAM/AEG/MWH/000.MWH.png";
+    $("barUoaWind").src = "https://forecast.uoa.gr/maps/0day/WRF/GRID1/wind10m/000.wind10m.png";
     try {
       await loadLeaflet();
       pWave = initPoseidonMini("pWaveMap");
