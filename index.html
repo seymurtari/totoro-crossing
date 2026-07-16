@@ -173,7 +173,7 @@
       <label for="coords">Point of interest</label>
       <input type="text" id="coords" placeholder="lat, lon  e.g. 36.65, 26.35" value="37.278791, 26.034832">
       <button id="go">Get consensus</button>
-      <button id="mapBtn" style="background:var(--card2);color:var(--accent);border:1px solid var(--accent)">Mapbox 🗺</button>
+      <button id="mapBtn" style="background:var(--card2);color:var(--accent);border:1px solid var(--accent)">Focus 🎯</button>
       <button id="greekBtn" style="background:var(--card2);color:var(--green);border:1px solid var(--green)">Greek maps 🌊</button>
       <span id="presets"></span>
       <span class="thresholds">
@@ -851,6 +851,7 @@ async function run() {
     render(pos.lat, pos.lon, data);
     const nW = data.windyWind.length + (data.poseidonWind ? 1 : 0);
     const nV = data.windyWave.length + (data.poseidonWave ? 1 : 0);
+    try { localStorage.setItem("totoro_crossing_last", JSON.stringify(pos)); } catch (e) {} // reused as next session's start point
     st.textContent = `Updated ${new Date().toLocaleTimeString()} — ${nW} wind + ${nV} wave models (Windy + Poseidon).`
       + (windyServedStale ? "  ⚠ Windy shown from cache (live API unavailable — data may be an older run)" : "")
       + (data.windyErrors.length ? "  ⚠ Windy: " + data.windyErrors.join("; ") : "")
@@ -1074,7 +1075,11 @@ $("coords").addEventListener("keydown", e => { if (e.key === "Enter") run(); });
 ["thWindGo", "thWindNo", "thWaveGo", "thWaveNo"].forEach(id =>
   $(id).addEventListener("change", () => { if (lastData && lastPos) render(lastPos.lat, lastPos.lon, lastData); }));
 drawPresets();
-if (parseCoords($("coords").value)) run(); // auto-load the default point on open
+try { // start where the last session left off; the input's value stays the fallback default
+  const last = JSON.parse(localStorage.getItem("totoro_crossing_last"));
+  if (last && parseCoords(last.lat + ", " + last.lon)) $("coords").value = last.lat + ", " + last.lon;
+} catch (e) {}
+if (parseCoords($("coords").value)) run(); // auto-load on open
 </script>
 </body>
 </html>
