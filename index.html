@@ -269,6 +269,8 @@
         <thead>
           <tr>
             <th>Day</th>
+            <th>Verdict</th>
+            <th>Agreement</th>
             <th>Wave avg m</th>
             <th>Wave max m</th>
             <th>Period s</th>
@@ -277,8 +279,6 @@
             <th>Gust max kt</th>
             <th>Wind dir</th>
             <th>Models wave/wind</th>
-            <th>Agreement</th>
-            <th>Verdict</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -811,6 +811,8 @@ function render(lat, lon, data) {
     if (d.nWind <= 1 && d.nWave <= 1) tr.className = "rowdim";
     tr.innerHTML = `
       <td class="day">${d.date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}</td>
+      <td>${vd ? `<span class="verdict v-${vd}">${vd === "go" ? "GO" : vd === "care" ? "CARE" : "NO"}</span>` : "—"}${(conflictByDay.get(d.key) || 0) >= DISC_HOURS_FLAG ? ` <span title="Sources disagree materially for ${conflictByDay.get(d.key)} h this day — re-check closer to departure" style="cursor:help">⚠</span>` : ""}</td>
+      <td style="color:${agColor}">${agLabel}</td>
       <td>${fmt(d.waveAvg)}</td>
       <td><b>${fmt(d.waveMax)}</b> <span class="band">${d.waveMaxLo != null ? `(${fmt(d.waveMaxLo)}–${fmt(d.waveMaxHi)})` : ""}</span></td>
       <td>${fmt(d.period)}</td>
@@ -818,9 +820,7 @@ function render(lat, lon, data) {
       <td><b>${fmt(d.windMax, 0)}</b> <span class="band">${d.windMaxLo != null ? `(${fmt(d.windMaxLo, 0)}–${fmt(d.windMaxHi, 0)})` : ""}</span></td>
       <td>${fmt(d.gustMax, 0)}</td>
       <td>${dirLabel(d.dir)}</td>
-      <td>${d.nWave}/${d.nWind}</td>
-      <td style="color:${agColor}">${agLabel}</td>
-      <td>${vd ? `<span class="verdict v-${vd}">${vd === "go" ? "GO" : vd === "care" ? "CARE" : "NO"}</span>` : "—"}${(conflictByDay.get(d.key) || 0) >= DISC_HOURS_FLAG ? ` <span title="Sources disagree materially for ${conflictByDay.get(d.key)} h this day — re-check closer to departure" style="cursor:help">⚠</span>` : ""}</td>`;
+      <td>${d.nWave}/${d.nWind}</td>`;
     tb.appendChild(tr);
   });
 
