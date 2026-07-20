@@ -152,6 +152,9 @@
   .greek-grid h3 { grid-column: 1 / -1; font-size: 14px; color: var(--accent); margin: 6px 0 0; }
   .pmini { width: 100%; aspect-ratio: 1.7; border-radius: 6px; background: var(--bg); }
   .pscale { width: 100%; margin-top: 6px; border-radius: 4px; display: block; }
+  .figslider { display: flex; gap: 10px; align-items: center; margin-top: 8px; }
+  .figslider input { flex: 1; accent-color: var(--accent); }
+  .gslider-label { font-size: 12.5px; color: var(--gold); white-space: nowrap; }
   .maprow { display: flex; gap: 6px; align-items: center; }
   .maprow .crop.mapmain { flex: 1; }
   .crop.bar { width: 44px; flex: none; }
@@ -231,7 +234,7 @@
       </div>
       <div class="row" style="margin-bottom:2px">
         <label style="min-width:70px">Date &amp; time</label>
-        <input type="range" id="greekSlider" min="0" max="40" step="1" value="0" style="flex:1;accent-color:var(--accent)">
+        <input type="range" id="greekSlider" class="gslider" min="0" max="40" step="1" value="0" style="flex:1;accent-color:var(--accent)">
       </div>
       <div id="greekDays" style="display:flex;margin:0 0 10px 78px;font-size:11px;color:var(--dim)"></div>
       <div class="greek-grid">
@@ -1012,12 +1015,24 @@ function greekFrame(step) {
   setMapSrc("gUoaWind", `https://forecast.uoa.gr/maps/0day/WRF/GRID1/wind10m/${hhh}.wind10m.png`); // Greece WRF, ~66 h
   if (pWave) pWave.ov.setUrl(poseidonOverlayURL("WAM", "wht", h));
   if (pWind) pWind.ov.setUrl(poseidonOverlayURL("METEO", "w10", h));
-  // frames count from today's 00:00 UTC model run -> show real date/time in GMT+3
+}
+
+function greekLabelText(h) {
+  // frames count from today's 00:00 UTC model run -> real date/time in GMT+3
   const now = new Date();
   const runBase = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
   const t = new Date(runBase + h * 3600e3 + TZ_OFFSET_MS);
   const WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], MO = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  $("greekTime").textContent = `${WD[t.getUTCDay()]} ${t.getUTCDate()} ${MO[t.getUTCMonth()]} ${String(t.getUTCHours()).padStart(2, "0")}:00 (+${h} h)`;
+  return `${WD[t.getUTCDay()]} ${t.getUTCDate()} ${MO[t.getUTCMonth()]} ${String(t.getUTCHours()).padStart(2, "0")}:00 (+${h} h)`;
+}
+
+/* every slider (master + one under each map) drives the same shared time step */
+function setGreekStep(step) {
+  const label = greekLabelText(step * 3);
+  document.querySelectorAll("#greekPanel .gslider").forEach(s => { if (+s.value !== step) s.value = step; });
+  document.querySelectorAll("#greekPanel .gslider-label").forEach(el => { el.textContent = label; });
+  $("greekTime").textContent = label;
+  greekFrame(step);
 }
 ["gNoaWave", "gUoaWave", "gNoaWind", "gUoaWind"].forEach(id => {
   const el = $(id);
@@ -1056,11 +1071,18 @@ $("greekBtn").onclick = async () => {
       pWind = initPoseidonMini("pWindMap");
       setTimeout(() => { pWave.m.invalidateSize(); pWind.m.invalidateSize(); }, 80);
     } catch (e) { /* Poseidon panes stay empty; image panes still work */ }
-    greekFrame(+$("greekSlider").value);
+    // replicate the day slider under every map so you can scrub while watching one pane
+    document.querySelectorAll("#greekPanel .greek-grid figure").forEach(fig => {
+      const d = document.createElement("div");
+      d.className = "figslider";
+      d.innerHTML = '<input type="range" class="gslider" min="0" max="40" step="1" value="0"><span class="gslider-label">—</span>';
+      fig.appendChild(d);
+    });
+    setGreekStep(+$("greekSlider").value);
   }
 };
 $("greekClose").onclick = () => $("greekPanel").classList.add("hide");
-$("greekSlider").addEventListener("input", e => greekFrame(+e.target.value));
+$("greekPanel").addEventListener("input", e => { if (e.target.classList.contains("gslider")) setGreekStep(+e.target.value); });
 
 $("mapBtn").onclick = openMapPicker;
 $("pickClose").onclick = () => $("mapPanel").classList.add("hide");
